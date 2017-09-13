@@ -1,0 +1,31 @@
+{
+    "name": "tysonandre/tolerant-php-parser-to-php-ast",
+    "description": "A pure PHP substitute for nikic/php-ast, using Microsoft/tolerant-php-parser. Can also be used to generate php-ast trees, even for files with some types of syntax errors.",
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "keywords": ["php", "ast", "parser"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Tyson Andre"
+        }
+    ],
+    "require": {
+        "php": ">=7.1",
+        "Microsoft/tolerant-php-parser": "master",
+        "nikic/php-parser": "3.1.1"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^5.7",
+        "etsy/phan": "master"
+    },
+    "suggest": {
+        "ext-ast": "~0.1.5"
+    },
+    "autoload": {
+        "psr-4": {"TolerantASTConverter\\": "src/TolerantASTConverter"}
+    },
+    "autoload-dev": {
+        "psr-4": {"TolerantASTConverter\\Tests\\": "tests/TolerantASTConverter"}
+    }
+}
