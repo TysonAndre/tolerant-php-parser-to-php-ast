@@ -30,6 +30,7 @@ function main() {
     }
 
     $astNode->parent = null;
+    unset($astNode->statementList[0]);
     var_dump($astNode->statementList);
 }
 main();
