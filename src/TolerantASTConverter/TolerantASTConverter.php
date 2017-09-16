@@ -1507,12 +1507,12 @@ class TolerantASTConverter {
         return astnode(\ast\AST_CONST_DECL, 0, $constElems, $constElems[0]->lineno ?: $startLine);
     }
 
-    private static function _phpparser_declare_list_to_ast_declares(array $declares, int $startLine) : \ast\Node {
+    private static function _phpparser_declare_directive_to_ast_declares(PhpParser\Node\DeclareDirective $declares, int $startLine) : \ast\Node {
         $astDeclareElements = [];
         foreach ($declares as $declare) {
             $children = [
-                'name' => $declare->key,
-                'value' => self::_phpparser_node_to_ast_node($declare->value),
+                'name' => self::_token_to_string($declare->name),
+                'value' => self::_token_to_scalar($declare->literal),
             ];
             $astDeclareElements[] = astnode(\ast\AST_CONST_ELEM, 0, $children, self::getStartLine($declare));
         }
@@ -1621,6 +1621,16 @@ class TolerantASTConverter {
             'expr'  => self::_phpparser_node_to_ast_node($n->var),
             'prop'  => is_object($name) ?  : $name,
         ], $startLine);
+    }
+
+    private static function _token_to_scalar(PhpParser\Token $n) {
+        $str = self::_token_to_string($n);
+        $int = \filter_var($str, FILTER_VALIDATE_INT);
+        if ($int !== false) {
+            return $int;
+        }
+        // TODO: other cases
+        return $str;
     }
 
     private static function _token_to_string(PhpParser\Token $n) : string {

@@ -71,19 +71,6 @@ return [
     // class types.
     'generic_types_enabled' => true,
 
-    // By default, Phan will not analyze all node types
-    // in order to save time. If this config is set to true,
-    // Phan will dig deeper into the AST tree and do an
-    // analysis on all nodes, possibly finding more issues.
-    //
-    // See \Phan\Analysis::shouldVisit for the set of skipped
-    // nodes.
-    'should_visit_all_nodes' => true,
-
-    // Override if runkit.superglobal ini directive is used.
-    // See Phan\Config.
-    'runkit_superglobals' => [],
-
     // Override to hardcode existence and types of (non-builtin) globals.
     // Class names must be prefixed with '\\'.
     'globals_type_map' => ['var' => 'string'],
