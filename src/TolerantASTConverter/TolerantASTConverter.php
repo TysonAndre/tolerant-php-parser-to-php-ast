@@ -14,9 +14,27 @@ use Microsoft\PhpParser\TokenKind;
  */
 class TolerantASTConverter {
     // The latest stable version of php-ast.
-    // For something > 40, update the library's release.
+    // For something > 50, update the library's release.
     // For something < 40, there are no releases.
-    const AST_VERSION = 40;
+    const AST_VERSION = 50;
+
+    // The versions that this supports
+    const SUPPORTED_AST_VERSIONS = [40, 50];
+
+    /**
+     * @var int - A version in SUPPORTED_AST_VERSIONS
+     */
+    private static $ast_version = self::AST_VERSION;
+
+    /**
+     * @var int - A version in SUPPORTED_AST_VERSIONS
+     */
+    private static $decl_id = 0;
+
+    /**
+     * @var string - File contents
+     */
+    private static $file_contents = '';
 
     private static $should_add_placeholders = false;
 
@@ -25,20 +43,22 @@ class TolerantASTConverter {
     }
 
     public static function ast_parse_code_fallback(string $source, int $version, bool $suppressErrors = false, array &$errors = null) {
-        if ($version !== self::AST_VERSION) {
-            throw new \InvalidArgumentException(sprintf("Unexpected version: want %d, got %d", self::AST_VERSION, $version));
+        if (!\in_array($version, self::sUPPORTED_AST_VERSIONS)) {
+            throw new \InvalidArgumentException(sprintf("Unexpected version: want %d, got %d", implode(', ', self::SUPPORTED_AST_VERSIONS), $version));
         }
         // Aside: this can be implemented as a stub.
         $parserNode = self::phpparser_parse($source, $suppressErrors, $errors);
         return self::phpparser_to_phpast($parserNode, $version);
     }
 
+    /**
+     * @return PhpParser\Node
+     */
     public static function phpparser_parse(string $source, bool $suppressErrors = false, array &$errors = null) {
         $parser = new Parser();  // TODO: Language version?
         // $nodeDumper = new PhpParser\NodeDumper();
         // TODO: Provide url
         $result = $parser->parseSourceFile($source);
-        // TODO: extract errors?
         $errors = DiagnosticsProvider::getDiagnostics($result);
         return $result;
     }
@@ -47,15 +67,19 @@ class TolerantASTConverter {
     /**
      * @param PhpParser\Node|PhpParser\Node[] $parserNode
      * @param int $version
+     * @return \ast\Node
      */
-    public static function phpparser_to_phpast($parserNode, int $version) {
-        if ($version !== self::AST_VERSION) {
-            throw new \InvalidArgumentException(sprintf("Unexpected version: want %d, got %d", self::AST_VERSION, $version));
-        }
-        if (is_array($parserNode)) {
-            return self::_phpparser_stmtlist_to_ast_node($parserNode, 1);
+    public static function phpparser_to_phpast($parserNode, int $version, string $file_contents) {
+        if (!\in_array($version, self::SUPPORTED_AST_VERSIONS)) {
+            throw new \InvalidArgumentException(sprintf("Unexpected version: want %s, got %d", implode(', ', self::SUPPORTED_AST_VERSIONS), $version));
         }
         return self::_phpparser_node_to_ast_node($parserNode);
+    }
+
+    private static function _start_parsing(int $ast_version, string $file_contents) {
+        self::$ast_version = $ast_version;
+        self::$decl_id = 0;
+        self::$file_contents = $file_contents;
     }
 
     private static function _phpparser_stmtlist_to_ast_node(array $parserNodes, ?int $lineno) : \ast\Node {
@@ -111,7 +135,7 @@ class TolerantASTConverter {
                 break;
             }
         }
-        return astnode(
+        return new \ast\Node(
             \ast\AST_EXPR_LIST,
             0,
             $children,
@@ -174,7 +198,7 @@ class TolerantASTConverter {
                 return self::_phpparser_array_to_ast_array($n, $startLine);
             },
             'Microsoft\PhpParser\Node\Expression\SubscriptExpression'            => function(PhpParser\Node\Expression\SubscriptExpression $n, int $startLine) : \ast\Node {
-                return astnode(\ast\AST_DIM, 0, [
+                return new \ast\Node(\ast\AST_DIM, 0, [
                     'expr' => self::_phpparser_node_to_ast_node($n->postfixExpression),
                     'dim' => $n->accessExpression !== null ? self::_phpparser_node_to_ast_node($n->accessExpression) : null,
                 ], $startLine);
@@ -201,7 +225,7 @@ class TolerantASTConverter {
                 ];
                 $kind = $n->operator->kind;
                 if ($kind === TokenKind::InstanceOfKeyword) {
-                    return astnode(\ast\AST_INSTANCEOF, 0, [
+                    return new \ast\Node(\ast\AST_INSTANCEOF, 0, [
                         'expr'  => self::_phpparser_node_to_ast_node($n->leftOperand),
                         'class' => self::_phpparser_node_to_ast_node($n->rightOperand),
                     ], $startLine);
@@ -255,7 +279,7 @@ class TolerantASTConverter {
             'Microsoft\PhpParser\Node\Expression\ScopedPropertyAccessExpression' => function(PhpParser\Node\Expression\ScopedPropertyAccessExpression $n, int $startLine) : ?\ast\Node {
                 $memberName = $n->memberName;
                 if ($memberName instanceof PhpParser\Node\Expression\Variable) {
-                    return astnode(
+                    return new \ast\Node(
                         \ast\AST_STATIC_PROP,
                         0,
                         [
@@ -270,13 +294,13 @@ class TolerantASTConverter {
                 }
             },
             'Microsoft\PhpParser\Node\Expression\CloneExpression' => function(PhpParser\Node\Expression\CloneExpression $n, int $startLine) : \ast\Node {
-                return astnode(\ast\AST_CLONE, 0, ['expr' => self::_phpparser_node_to_ast_node($n->expression)], $startLine);
+                return new \ast\Node(\ast\AST_CLONE, 0, ['expr' => self::_phpparser_node_to_ast_node($n->expression)], $startLine);
             },
             'Microsoft\PhpParser\Node\Expression\ErrorControlExpression' => function(PhpParser\Node\Expression\ErrorControlExpression $n, int $startLine) : \ast\Node {
                 return self::_ast_node_unary_op(\ast\flags\UNARY_SILENCE, self::_phpparser_node_to_ast_node($n->operand), $startLine);
             },
             'Microsoft\PhpParser\Node\Expression\EmptyIntrinsicExpression' => function(PhpParser\Node\Expression\EmptyIntrinsicExpression $n, int $startLine) : \ast\Node {
-                return astnode(\ast\AST_EMPTY, 0, ['expr' => self::_phpparser_node_to_ast_node($n->expression)], $startLine);
+                return new \ast\Node(\ast\AST_EMPTY, 0, ['expr' => self::_phpparser_node_to_ast_node($n->expression)], $startLine);
             },
             'Microsoft\PhpParser\Node\Expression\EvalIntrinsicExpression' => function(PhpParser\Node\Expression\EvalIntrinsicExpression $n, int $startLine) : \ast\Node {
                 return self::_ast_node_eval(
@@ -290,7 +314,7 @@ class TolerantASTConverter {
                 return null;
             },
             'Microsoft\PhpParser\Node\Expression\ExitIntrinsicExpression' => function(PhpParser\Node\Expression\ExitIntrinsicExpression $n, int $startLine) {
-                return astnode(\ast\AST_EXIT, 0, ['expr' => self::_phpparser_node_to_ast_node($n->expression)], $startLine);
+                return new \ast\Node(\ast\AST_EXIT, 0, ['expr' => self::_phpparser_node_to_ast_node($n->expression)], $startLine);
             },
             'Microsoft\PhpParser\Node\Expression\CallExpression' => function(PhpParser\Node\Expression\CallExpression $n, int $startLine) : \ast\Node {
                 $callableExpression = $n->callableExpression;
@@ -327,14 +351,14 @@ class TolerantASTConverter {
             'Microsoft\PhpParser\Node\Expression\IssetIntrinsicExpression' => function(PhpParser\Node\Expression\IssetIntrinsicExpression $n, int $startLine) : \ast\Node {
                 $astIssets = [];
                 foreach ($n->expressions->children as $var) {
-                    $astIssets[] = astnode(\ast\AST_ISSET, 0, [
+                    $astIssets[] = new \ast\Node(\ast\AST_ISSET, 0, [
                         'var' => self::_phpparser_node_to_ast_node($var),
                     ], $startLine);
                 }
                 $e = $astIssets[0];
                 for ($i = 1; $i < \count($astIssets); $i++) {
                     $right = $astIssets[$i];
-                    $e = astnode(
+                    $e = new \ast\Node(
                         \ast\AST_BINARY_OP,
                         \ast\flags\BINARY_BOOL_AND,
                         [
@@ -350,7 +374,7 @@ class TolerantASTConverter {
                 return self::_phpparser_list_to_ast_list($n, $startLine);
             },
             'Microsoft\PhpParser\Node\Expression\ObjectCreationExpression' => function(PhpParser\Node\Expression\ObjectCreationExpression $n, int $startLine) : \ast\Node {
-                return astnode(\ast\AST_NEW, 0, [
+                return new \ast\Node(\ast\AST_NEW, 0, [
                     'class' => self::_phpparser_node_to_ast_node($n->classTypeDesignator),
                     'args' => self::_phpparser_arg_list_to_ast_arg_list($n->argumentExpressionList, $startLine),
                 ], $startLine);
@@ -363,7 +387,7 @@ class TolerantASTConverter {
                 default: throw new \RuntimeException('impossible operator ' . $type);
                 }
 
-                return astnode($type, 0, ['var' => self::_phpparser_node_to_ast_node($n->operand)], $startLine);
+                return new \ast\Node($type, 0, ['var' => self::_phpparser_node_to_ast_node($n->operand)], $startLine);
             },
             'Microsoft\PhpParser\Node\Expression\PostfixUpdateExpression' => function(PhpParser\Node\Expression\PostfixUpdateExpression $n, int $startLine) : \ast\Node {
                 $name = self::_token_to_string($n->incrementOrDecrementOperator);
@@ -373,10 +397,10 @@ class TolerantASTConverter {
                 default: throw new \RuntimeException('impossible operator ' . $type);
                 }
 
-                return astnode($type, 0, ['var' => self::_phpparser_node_to_ast_node($n->operand)], $startLine);
+                return new \ast\Node($type, 0, ['var' => self::_phpparser_node_to_ast_node($n->operand)], $startLine);
             },
             'Microsoft\PhpParser\Node\Expression\PrintIntrinsicExpression' => function(PhpParser\Node\Expression\PrintIntrinsicExpression $n, int $startLine) : \ast\Node {
-                return astnode(
+                return new \ast\Node(
                     \ast\AST_PRINT,
                     0,
                     ['expr' => self::_phpparser_node_to_ast_node($n->expression)],
@@ -387,7 +411,7 @@ class TolerantASTConverter {
                 return self::_phpparser_propertyfetch_to_ast_prop($n, $startLine);
             },
             'Microsoft\PhpParser\Node\Expression\TernaryExpression' => function(PhpParser\Node\Expression\TernaryExpression $n, int $startLine) : \ast\Node {
-                return astnode(
+                return new \ast\Node(
                     \ast\AST_CONDITIONAL,
                     0,
                     [
@@ -412,7 +436,7 @@ class TolerantASTConverter {
                 $kind = \ast\AST_YIELD_FROM;
                 }
                 $arrayElement = $n->arrayElement;
-                return astnode(
+                return new \ast\Node(
                     $kind,
                     0,
                     [
@@ -438,7 +462,7 @@ class TolerantASTConverter {
             /*
             // FIXME parse
             'Microsoft\PhpParser\Node\Scalar\Encapsed' => function(PhpParser\Node\Scalar\Encapsed $n, int $startLine) : \ast\Node {
-                return astnode(
+                return new \ast\Node(
                     \ast\AST_ENCAPS_LIST,
                     0,
                     array_map(function(PhpParser\Node $n) { return self::_phpparser_node_to_ast_node($n); }, $n->parts),
@@ -498,7 +522,7 @@ class TolerantASTConverter {
                 case 8: $kind = \ast\AST_CONTINUE;
                 default: throw new \RuntimeException("Invalid BreakOrContinueStatement token");
                 }
-                return astnode($kind, 0, ['depth' => isset($n->breakoutLevel) ? (int)self::_token_to_string($n->breakoutLevel) : null], $startLine);
+                return new \ast\Node($kind, 0, ['depth' => isset($n->breakoutLevel) ? (int)self::_token_to_string($n->breakoutLevel) : null], $startLine);
             },
             /*
             'Microsoft\PhpParser\Node\CatchClause' => function(PhpParser\Node\CatchClause $n, int $startLine) : \ast\Node {
@@ -530,7 +554,7 @@ class TolerantASTConverter {
                 return self::_phpparser_class_const_to_ast_node($n, $startLine);
             },
             'Microsoft\PhpParser\Node\MethodDeclaration' => function(PhpParser\Node\MethodDeclaration $n, int $startLine) : \ast\Node {
-                return astdecl(
+                return self::_new_ast_decl(
                     \ast\AST_METHOD,
                     self::_phpparser_visibility_to_ast_visibility($n->modifiers) | ($n->byRefToken !== null ? \ast\flags\RETURNS_REF : 0),
                     [
@@ -578,14 +602,14 @@ class TolerantASTConverter {
             'Microsoft\PhpParser\Node\Statement\Foreach_' => function(PhpParser\Node\Statement\Foreach_ $n, int $startLine) : \ast\Node {
                 $value = self::_phpparser_node_to_ast_node($n->valueVar);
                 if ($n->byRef) {
-                    $value = astnode(
+                    $value = new \ast\Node(
                         \ast\AST_REF,
                         0,
                         ['var' => $value],
                         $value->lineno ?? $startLine
                     );
                 }
-                return astnode(
+                return new \ast\Node(
                     \ast\AST_FOREACH,
                     0,
                     [
@@ -623,7 +647,7 @@ class TolerantASTConverter {
             'Microsoft\PhpParser\Node\Statement\Global_' => function(PhpParser\Node\Statement\Global_ $n, int $startLine) {
                 $globalNodes = [];
                 foreach ($n->vars as $var) {
-                    $globalNodes[] = astnode(\ast\AST_GLOBAL, 0, ['var' => self::_phpparser_node_to_ast_node($var)], self::getEndLine($var) ?: $startLine);
+                    $globalNodes[] = new \ast\Node(\ast\AST_GLOBAL, 0, ['var' => self::_phpparser_node_to_ast_node($var)], self::getEndLine($var) ?: $startLine);
                 }
                 return \count($globalNodes) === 1 ? $globalNodes[0] : $globalNodes;
             },
@@ -635,6 +659,7 @@ class TolerantASTConverter {
             },
             'Microsoft\PhpParser\Node\Statement\Interface_' => function(PhpParser\Node\Statement\Interface_ $n, int $startLine) : \ast\Node {
                 $endLine = self::getEndLine($n) ?: $startLine;
+                // FIXME: interface extending other interface
                 return self::_ast_stmt_class(
                     \ast\flags\CLASS_INTERFACE,
                     $n->name,
@@ -647,7 +672,7 @@ class TolerantASTConverter {
                 );
             },
             'Microsoft\PhpParser\Node\Statement\For_' => function(PhpParser\Node\Statement\For_ $n, int $startLine) : \ast\Node {
-                return astnode(
+                return new \ast\Node(
                     \ast\AST_FOR,
                     0,
                     [
@@ -672,7 +697,7 @@ class TolerantASTConverter {
                     'dumpComments' => true,
                     'dumpPositions' => true,
                 ]);
-                return astnode(
+                return new \ast\Node(
                     \ast\AST_NAMESPACE,
                     0,
                     [
@@ -696,8 +721,8 @@ class TolerantASTConverter {
             'Microsoft\PhpParser\Node\Statement\Static_' => function(PhpParser\Node\Statement\Static_ $n, int $startLine) {
                 $staticNodes = [];
                 foreach ($n->vars as $var) {
-                    $staticNodes[] = astnode(\ast\AST_STATIC, 0, [
-                        'var' => astnode(\ast\AST_VAR, 0, ['name' => $var->name], self::getEndLine($var) ?: $startLine),
+                    $staticNodes[] = new \ast\Node(\ast\AST_STATIC, 0, [
+                        'var' => new \ast\Node(\ast\AST_VAR, 0, ['name' => $var->name], self::getEndLine($var) ?: $startLine),
                         'default' => $var->default !== null ? self::_phpparser_node_to_ast_node($var->default) : null,
                     ], self::getEndLine($var) ?: $startLine);
                 }
@@ -707,7 +732,7 @@ class TolerantASTConverter {
                 return self::_phpparser_switch_list_to_ast_switch($n);
             },
             'Microsoft\PhpParser\Node\Statement\Throw_' => function(PhpParser\Node\Statement\Throw_ $n, int $startLine) : \ast\Node {
-                return astnode(
+                return new \ast\Node(
                     \ast\AST_THROW,
                     0,
                     ['expr' => self::_phpparser_node_to_ast_node($n->expression)],
@@ -732,11 +757,11 @@ class TolerantASTConverter {
                     $adaptations_inner = array_map(function(PhpParser\Node\Statement\TraitUseAdaptation $n) : \ast\Node {
                         return self::_phpparser_node_to_ast_node($n);
                     }, $n->adaptations);
-                    $adaptations = astnode(\ast\AST_TRAIT_ADAPTATIONS, 0, $adaptations_inner, $adaptations_inner[0]->lineno ?: $startLine);
+                    $adaptations = new \ast\Node(\ast\AST_TRAIT_ADAPTATIONS, 0, $adaptations_inner, $adaptations_inner[0]->lineno ?: $startLine);
                 } else {
                     $adaptations = null;
                 }
-                return astnode(
+                return new \ast\Node(
                     \ast\AST_USE_TRAIT,
                     0,
                     [
@@ -750,8 +775,8 @@ class TolerantASTConverter {
                 $old_class = $n->trait !== null ? self::_phpparser_node_to_ast_node($n->trait) : null;
                 $flags = ($n->trait instanceof PhpParser\Node\Name\FullyQualified) ? \ast\flags\NAME_FQ : \ast\flags\NAME_NOT_FQ;
                 // TODO: flags for visibility
-                return astnode(\ast\AST_TRAIT_ALIAS, self::_phpparser_visibility_to_ast_visibility($n->newModifier ?? 0, false), [
-                    'method' => astnode(\ast\AST_METHOD_REFERENCE, 0, [
+                return new \ast\Node(\ast\AST_TRAIT_ALIAS, self::_phpparser_visibility_to_ast_visibility($n->newModifier ?? 0, false), [
+                    'method' => new \ast\Node(\ast\AST_METHOD_REFERENCE, 0, [
                         'class' => $old_class,
                         'method' => $n->method,
                     ], $startLine),
@@ -762,9 +787,9 @@ class TolerantASTConverter {
                 $old_class = $n->trait !== null ? self::_phpparser_name_to_string($n->trait) : null;
                 $flags = ($n->trait instanceof PhpParser\Node\Name\FullyQualified) ? \ast\flags\NAME_FQ : \ast\flags\NAME_NOT_FQ;
                 // TODO: flags for visibility
-                return astnode(\ast\AST_TRAIT_PRECEDENCE, 0, [
-                    'method' => astnode(\ast\AST_METHOD_REFERENCE, 0, [
-                        'class' => astnode(\ast\AST_NAME, $flags, ['name' => $old_class], $startLine),
+                return new \ast\Node(\ast\AST_TRAIT_PRECEDENCE, 0, [
+                    'method' => new \ast\Node(\ast\AST_METHOD_REFERENCE, 0, [
+                        'class' => new \ast\Node(\ast\AST_NAME, $flags, ['name' => $old_class], $startLine),
                         'method' => $n->method,
                     ], $startLine),
                     'insteadof' => self::_phpparser_name_list_to_ast_name_list($n->insteadof, $startLine),
@@ -785,7 +810,7 @@ class TolerantASTConverter {
             'Microsoft\PhpParser\Node\Statement\Unset_' => function(PhpParser\Node\Statement\Unset_ $n, int $startLine) {
                 $stmts = [];
                 foreach ($n->vars as $var) {
-                    $stmts[] = astnode(\ast\AST_UNSET, 0, ['var' => self::_phpparser_node_to_ast_node($var)], self::getEndLine($var) ?: $startLine);
+                    $stmts[] = new \ast\Node(\ast\AST_UNSET, 0, ['var' => self::_phpparser_node_to_ast_node($var)], self::getEndLine($var) ?: $startLine);
                 }
                 return \count($stmts) === 1 ? $stmts[0] : $stmts;
             },
@@ -840,7 +865,7 @@ class TolerantASTConverter {
         $node->flags = 0;
         $node->children = [
             'class' => $types,
-            'var' => astnode(\ast\AST_VAR, 0, ['name' => $var], end($types->children)->lineno),  // FIXME AST_VAR
+            'var' => new \ast\Node(\ast\AST_VAR, 0, ['name' => $var], end($types->children)->lineno),  // FIXME AST_VAR
             'stmts' => $stmts,
         ];
         return $node;
@@ -864,11 +889,11 @@ class TolerantASTConverter {
         foreach ($types as $type) {
             $astTypes[] = self::_phpparser_node_to_ast_node($type);
         }
-        return astnode(\ast\AST_NAME_LIST, 0, $astTypes, $line);
+        return new \ast\Node(\ast\AST_NAME_LIST, 0, $astTypes, $line);
     }
 
     private static function _ast_node_while($cond, $stmts, int $startLine) : \ast\Node {
-        return astnode(
+        return new \ast\Node(
             \ast\AST_WHILE,
             0,
             [
@@ -880,7 +905,7 @@ class TolerantASTConverter {
     }
 
     private static function _ast_node_do_while($cond, $stmts, int $startLine) : \ast\Node {
-        return astnode(
+        return new \ast\Node(
             \ast\AST_DO_WHILE,
             0,
             [
@@ -911,15 +936,15 @@ class TolerantASTConverter {
     }
 
     private static function _ast_node_unary_op(int $flags, $expr, int $line) : \ast\Node {
-        return astnode(\ast\AST_UNARY_OP, $flags, ['expr' => $expr], $line);
+        return new \ast\Node(\ast\AST_UNARY_OP, $flags, ['expr' => $expr], $line);
     }
 
     private static function _ast_node_cast(int $flags, PhpParser\Node\Expression\CastExpression $n, int $line) : \ast\Node {
-        return astnode(\ast\AST_CAST, $flags, ['expr' => self::_phpparser_node_to_ast_node($n->expression)], self::getEndLine($n) ?: $line);
+        return new \ast\Node(\ast\AST_CAST, $flags, ['expr' => self::_phpparser_node_to_ast_node($n->expression)], self::getEndLine($n) ?: $line);
     }
 
     private static function _ast_node_eval($expr, int $line) : \ast\Node {
-        return astnode(\ast\AST_INCLUDE_OR_EVAL, \ast\flags\EXEC_EVAL, ['expr' => $expr], $line);
+        return new \ast\Node(\ast\AST_INCLUDE_OR_EVAL, \ast\flags\EXEC_EVAL, ['expr' => $expr], $line);
     }
 
     private static function _phpparser_include_token_to_ast_include_flags(PhpParser\Token $type) : int {
@@ -939,7 +964,7 @@ class TolerantASTConverter {
     }
     private static function _ast_node_include($expr, int $line, PhpParser\Token $type) : \ast\Node {
         $flags = self::_phpparser_include_token_to_ast_include_flags($type);
-        return astnode(\ast\AST_INCLUDE_OR_EVAL, $flags, ['expr' => $expr], $line);
+        return new \ast\Node(\ast\AST_INCLUDE_OR_EVAL, $flags, ['expr' => $expr], $line);
     }
 
     /**
@@ -965,7 +990,18 @@ class TolerantASTConverter {
             case 'array':
                 $flags = \ast\flags\TYPE_ARRAY; break;
             case 'object':
-                $flags = \ast\flags\TYPE_OBJECT; break;
+                if (self::$ast_version >= 45) {
+                    $flags = \ast\flags\TYPE_OBJECT; break;
+                } else {
+                    return new \ast\Node(
+                        \ast\AST_NAME,
+                        substr($type, 0, 1) === '\\' ? \ast\flags\NAME_FQ : \ast\flags\NAME_NOT_FQ,  // FIXME wrong.
+                        [
+                            'name' => $type,
+                        ],
+                        $line
+                    );
+                }
             case 'callable':
                 $flags = \ast\flags\TYPE_CALLABLE; break;
             case 'void':
@@ -973,14 +1009,14 @@ class TolerantASTConverter {
             case 'iterable':
                 $flags = \ast\flags\TYPE_ITERABLE; break;
             default:
-                $node = new \ast\Node();
-                $node->kind = \ast\AST_NAME;
-                $node->flags = substr($type, 0, 1) === '\\' ? \ast\flags\NAME_FQ : \ast\flags\NAME_NOT_FQ;  // FIXME wrong.
-                $node->lineno = $line;
-                $node->children = [
-                    'name' => $type,
-                ];
-                return $node;
+                return new \ast\Node(
+                    \ast\AST_NAME,
+                    substr($type, 0, 1) === '\\' ? \ast\flags\NAME_FQ : \ast\flags\NAME_NOT_FQ,  // FIXME wrong.
+                    [
+                        'name' => $type,
+                    ],
+                    $line
+                );
             }
             $node = new \ast\Node();
             $node->kind = \ast\AST_TYPE;
@@ -1030,9 +1066,9 @@ class TolerantASTConverter {
         // FIXME: skip over whitespace and \\
         $implodedParts = self::_phpparser_name_to_string($name);
         if ($n->globalSpecifier !== null) {
-            return astnode(\ast\AST_NAME, \ast\flags\NAME_FQ, ['name' => $implodedParts], $line);
+            return new \ast\Node(\ast\AST_NAME, \ast\flags\NAME_FQ, ['name' => $implodedParts], $line);
         }
-        return astnode(\ast\AST_NAME, \ast\flags\NAME_NOT_FQ, ['name' => $implodedParts], $line);
+        return new \ast\Node(\ast\AST_NAME, \ast\flags\NAME_NOT_FQ, ['name' => $implodedParts], $line);
     }
 
     private static function _ast_node_variable($expr, int $line) : ?\ast\Node {
@@ -1056,7 +1092,7 @@ class TolerantASTConverter {
     }
 
     private static function _ast_magic_const(int $flags, int $line) {
-        return astnode(\ast\AST_MAGIC_CONST, $flags, [], $line);
+        return new \ast\Node(\ast\AST_MAGIC_CONST, $flags, [], $line);
     }
 
     private static function _phpparser_params_to_ast_params(?PhpParser\Node\DelimitedList\ParameterDeclarationList $parserParams, int $line) : \ast\Node {
@@ -1103,9 +1139,9 @@ class TolerantASTConverter {
         }
         $astUses = [];
         foreach ($uses as $use) {
-            $astUses[] = astnode(\ast\AST_CLOSURE_VAR, $use->byRef ? 1 : 0, ['name' => $use->var], self::getStartLine($use));
+            $astUses[] = new \ast\Node(\ast\AST_CLOSURE_VAR, $use->byRef ? 1 : 0, ['name' => $use->var], self::getStartLine($use));
         }
-        return astnode(\ast\AST_CLOSURE_USES, 0, $astUses, $astUses[0]->lineno ?? $line);
+        return new \ast\Node(\ast\AST_CLOSURE_USES, 0, $astUses, $astUses[0]->lineno ?? $line);
 
     }
 
@@ -1120,20 +1156,21 @@ class TolerantASTConverter {
         int $endLine,
         ?string $docComment
     ) : \ast\Node\Decl {
-        $node = new \ast\Node\Decl;
-        $node->kind = \ast\AST_CLOSURE;
-        $node->flags = ($byRef ? \ast\flags\RETURNS_REF : 0) | ($static ? \ast\flags\MODIFIER_STATIC : 0);
-        $node->lineno = $startLine;
-        $node->endLineno = $endLine;
-        if ($docComment) { $node->docComment = $docComment; }
-        $node->children = [
-            'params' => $params,
-            'uses' => $uses,
-            'stmts' => $stmts,
-            'returnType' => $returnType,
-        ];
-        $node->name = '{closure}';
-        return $node;
+        return self::_new_ast_decl(
+            \ast\AST_CLOSURE,
+            ($byRef ? \ast\flags\RETURNS_REF : 0) | ($static ? \ast\flags\MODIFIER_STATIC : 0),
+            [
+                'params' => $params,
+                'uses' => $uses,
+                'stmts' => $stmts,
+                'returnType' => $returnType,
+            ],
+            $startLine,
+            $docComment,
+            '{closure}',
+            $endLine,
+            self::_next_decl_id()
+        );
     }
 
     /**
@@ -1150,20 +1187,21 @@ class TolerantASTConverter {
         int $endLine,
         ?string $docComment
     ) : \ast\Node\Decl {
-        $node = new \ast\Node\Decl;
-        $node->kind = \ast\AST_FUNC_DECL;
-        $node->flags = 0;
-        $node->lineno = $line;
-        $node->endLineno = $endLine;
-        $node->children = [
-            'params' => $params,
-            'uses' => $uses,
-            'stmts' => $stmts,
-            'returnType' => $returnType,
-        ];
-        $node->name = $name;
-        $node->docComment = $docComment;
-        return $node;
+        return self::_new_ast_decl(
+            \ast\AST_FUNC_DECL,
+            0,
+            [
+                'params' => $params,
+                'uses' => $uses,
+                'stmts' => $stmts,
+                'returnType' => $returnType,
+            ],
+            $line,
+            $docComment,
+            $name,
+            $endLine,
+            self::_next_decl_id()
+        );
     }
 
     private static function _phpparser_class_modifier_to_ast_class_flags(?PhpParser\Token $flags) : int {
@@ -1200,7 +1238,7 @@ class TolerantASTConverter {
         int $line,
         int $endLine,
         ?string $docComment
-    ) : \ast\Node\Decl {
+    ) : \ast\Node {
         if ($name === null) {
             $flags |= \ast\flags\CLASS_ANONYMOUS;
         }
@@ -1215,12 +1253,12 @@ class TolerantASTConverter {
             foreach ($implements as $implement) {
                 $ast_implements_inner[] = self::_phpparser_node_to_ast_node($implement);
             }
-            $ast_implements = astnode(\ast\AST_NAME_LIST, 0, $ast_implements_inner, $ast_implements_inner[0]->lineno);
+            $ast_implements = new \ast\Node(\ast\AST_NAME_LIST, 0, $ast_implements_inner, $ast_implements_inner[0]->lineno);
         } else {
             $ast_implements = null;
         }
 
-        return astdecl(
+        return self::_new_ast_decl(
             \ast\AST_CLASS,
             $flags,
             [
@@ -1325,7 +1363,7 @@ class TolerantASTConverter {
     }
 
     private static function _ast_if_elem($cond, $stmts, int $line) : \ast\Node {
-        return astnode(\ast\AST_IF_ELEM, 0, ['cond' => $cond, 'stmts' => $stmts], $line);
+        return new \ast\Node(\ast\AST_IF_ELEM, 0, ['cond' => $cond, 'stmts' => $stmts], $line);
     }
 
     private static function _phpparser_switch_list_to_ast_switch(PhpParser\Node\Statement\Switch_ $node) {
@@ -1333,7 +1371,7 @@ class TolerantASTConverter {
         $nodeLine = self::getEndLine($node) ?? 0;
         foreach ($node->cases as $case) {
             $caseLine = self::getEndLine($case);
-            $stmts[] = astnode(
+            $stmts[] = new \ast\Node(
                 \ast\AST_SWITCH_CASE,
                 0,
                 [
@@ -1343,9 +1381,9 @@ class TolerantASTConverter {
                 $caseLine ?? $nodeLine
             );
         }
-        return astnode(\ast\AST_SWITCH, 0, [
+        return new \ast\Node(\ast\AST_SWITCH, 0, [
             'cond' => self::_phpparser_node_to_ast_node($node->cond),
-            'stmts' => astnode(\ast\AST_SWITCH_LIST, 0, $stmts, $stmts[0]->lineno ?? $nodeLine),
+            'stmts' => new \ast\Node(\ast\AST_SWITCH_LIST, 0, $stmts, $stmts[0]->lineno ?? $nodeLine),
         ], $nodeLine);
     }
 
@@ -1377,7 +1415,7 @@ class TolerantASTConverter {
                 $parserElseLine
             );
         }
-        return astnode(\ast\AST_IF, 0, $ifElems, $startLine);
+        return new \ast\Node(\ast\AST_IF, 0, $ifElems, $startLine);
 
     }
 
@@ -1385,7 +1423,7 @@ class TolerantASTConverter {
      * @suppress PhanUndeclaredProperty
      */
     private static function _ast_node_assignop(int $flags, PhpParser\Node $node, int $startLine) {
-        return astnode(
+        return new \ast\Node(
             \ast\AST_ASSIGN_OP,
             $flags,
             [
@@ -1400,7 +1438,7 @@ class TolerantASTConverter {
      * @suppress PhanUndeclaredProperty
      */
     private static function _ast_node_binaryop(int $flags, PhpParser\Node $n, int $startLine) {
-        return astnode(
+        return new \ast\Node(
             \ast\AST_BINARY_OP,
             $flags,
             self::_phpparser_nodes_to_left_right_children($n->left, $n->right),
@@ -1423,7 +1461,7 @@ class TolerantASTConverter {
 
         $startLine = self::getStartLine($n);
 
-        return astnode(\ast\AST_PROP_ELEM, 0, $children, $startLine, $n->getDocCommentText() ?? $docComment);
+        return self::_new_ast_node(\ast\AST_CONST_ELEM, 0, $children, $startLine, self::_extract_phpdoc_comment($n->getAttribute('comments') ?? $docComment));
     }
 
     private static function _phpparser_constelem_to_ast_constelem(PhpParser\Node\ConstDeclaration $n, ?string $docComment) : \ast\Node{
@@ -1434,7 +1472,7 @@ class TolerantASTConverter {
 
         $startLine = self::getStartLine($n);
 
-        return astnode(\ast\AST_CONST_ELEM, 0, $children, $startLine, $n->getDocCommentText() ?? $docComment);
+        return self::_new_ast_node(\ast\AST_CONST_ELEM, 0, $children, $startLine, self::_extract_phpdoc_comment($n->getAttribute('comments') ?? $docComment));
     }
 
     /**
@@ -1483,7 +1521,7 @@ class TolerantASTConverter {
         }
         $flags = self::_phpparser_visibility_to_ast_visibility($n->flags);
 
-        return astnode(\ast\AST_PROP_DECL, $flags, $propElems, $propElems[0]->lineno ?: $startLine);
+        return new \ast\Node(\ast\AST_PROP_DECL, $flags, $propElems, $propElems[0]->lineno ?: $startLine);
     }
 
     private static function _phpparser_class_const_to_ast_node(PhpParser\Node\ClassConstDeclaration $n, int $startLine) : \ast\Node {
@@ -1494,7 +1532,7 @@ class TolerantASTConverter {
         }
         $flags = self::_phpparser_visibility_to_ast_visibility($n->flags);
 
-        return astnode(\ast\AST_CLASS_CONST_DECL, $flags, $constElems, $constElems[0]->lineno ?: $startLine);
+        return new \ast\Node(\ast\AST_CLASS_CONST_DECL, $flags, $constElems, $constElems[0]->lineno ?: $startLine);
     }
 
     private static function _phpparser_const_to_ast_node(PhpParser\Node\Statement\ConstDeclaration $n, int $startLine) : \ast\Node {
@@ -1504,19 +1542,31 @@ class TolerantASTConverter {
             $constElems[] = self::_phpparser_constelem_to_ast_constelem($prop, $i === 0 ? $docComment : null);
         }
 
-        return astnode(\ast\AST_CONST_DECL, 0, $constElems, $constElems[0]->lineno ?: $startLine);
+        return new \ast\Node(\ast\AST_CONST_DECL, 0, $constElems, $constElems[0]->lineno ?: $startLine);
     }
 
-    private static function _phpparser_declare_directive_to_ast_declares(PhpParser\Node\DeclareDirective $declares, int $startLine) : \ast\Node {
+    /**
+     * @suppress PhanUndeclaredProperty
+     */
+    private static function _phpparser_declare_list_to_ast_declares(array $declares, int $startLine, string $firstDocComment = null) : \ast\Node {
         $astDeclareElements = [];
         foreach ($declares as $declare) {
             $children = [
-                'name' => self::_token_to_string($declare->name),
-                'value' => self::_token_to_scalar($declare->literal),
+                'name' => $declare->key,
+                'value' => self::_phpparser_node_to_ast_node($declare->value),
             ];
-            $astDeclareElements[] = astnode(\ast\AST_CONST_ELEM, 0, $children, self::getStartLine($declare));
+            $docComment = self::_extract_phpdoc_comment($declare->getAttribute('comments')) ?? $firstDocComment;
+            $firstDocComment = null;
+            if (self::$ast_version >= 50) {
+                $children['docComment'] = $docComment;
+            }
+            $node = new \ast\Node(\ast\AST_CONST_ELEM, 0, $children, $declare->getAttribute('startLine'));
+            if (self::$ast_version < 50 && is_string($docComment)) {
+                $node->docComment = $docComment;
+            }
+            $astDeclareElements[] = $node;
         }
-        return astnode(\ast\AST_CONST_DECL, 0, $astDeclareElements, $startLine);
+        return new \ast\Node(\ast\AST_CONST_DECL, 0, $astDeclareElements, $startLine);
 
     }
 
@@ -1525,7 +1575,7 @@ class TolerantASTConverter {
             'declares' => $declares,
             'stmts' => $stmts,
         ];
-        return astnode(\ast\AST_DECLARE, 0, $children, $startLine);
+        return new \ast\Node(\ast\AST_DECLARE, 0, $children, $startLine);
     }
 
     private static function _ast_node_call($expr, $args, int $startLine) : \ast\Node{
@@ -1533,13 +1583,13 @@ class TolerantASTConverter {
             if (substr($expr, 0, 1) === '\\') {
                 $expr = substr($expr, 1);
             }
-            $expr = astnode(\ast\AST_NAME, \ast\flags\NAME_FQ, ['name' => $expr], $startLine);
+            $expr = new \ast\Node(\ast\AST_NAME, \ast\flags\NAME_FQ, ['name' => $expr], $startLine);
         }
-        return astnode(\ast\AST_CALL, 0, ['expr' => $expr, 'args' => $args], $startLine);
+        return new \ast\Node(\ast\AST_CALL, 0, ['expr' => $expr, 'args' => $args], $startLine);
     }
 
     private static function _ast_node_method_call($expr, $method, \ast\Node $args, int $startLine) : \ast\Node {
-        return astnode(\ast\AST_METHOD_CALL, 0, ['expr' => $expr, 'method' => $method, 'args' => $args], $startLine);
+        return new \ast\Node(\ast\AST_METHOD_CALL, 0, ['expr' => $expr, 'method' => $method, 'args' => $args], $startLine);
     }
 
     private static function _ast_node_static_call($class, $method, \ast\Node $args, int $startLine) : \ast\Node {
@@ -1548,9 +1598,9 @@ class TolerantASTConverter {
             if (substr($class, 0, 1) === '\\') {
                 $expr = substr($class, 1);
             }
-            $class = astnode(\ast\AST_NAME, \ast\flags\NAME_FQ, ['name' => $class], $startLine);
+            $class = new \ast\Node(\ast\AST_NAME, \ast\flags\NAME_FQ, ['name' => $class], $startLine);
         }
-        return astnode(\ast\AST_STATIC_CALL, 0, ['class' => $class, 'method' => $method, 'args' => $args], $startLine);
+        return new \ast\Node(\ast\AST_STATIC_CALL, 0, ['class' => $class, 'method' => $method, 'args' => $args], $startLine);
     }
 
     private static function _extract_phpdoc_comment($comments) : ?string {
@@ -1581,13 +1631,13 @@ class TolerantASTConverter {
             if ($item === null) {
                 $astItems[] = null;
             } else {
-                $astItems[] = astnode(\ast\AST_ARRAY_ELEM, 0, [
+                $astItems[] = new \ast\Node(\ast\AST_ARRAY_ELEM, 0, [
                     'value' => self::_phpparser_node_to_ast_node($item->value),
                     'key' => $item->key !== null ? self::_phpparser_node_to_ast_node($item->key) : null,
                 ], self::getStartLine($item));
             }
         }
-        return astnode(\ast\AST_ARRAY, \ast\flags\ARRAY_SYNTAX_LIST, $astItems, $startLine);
+        return new \ast\Node(\ast\AST_ARRAY, \ast\flags\ARRAY_SYNTAX_LIST, $astItems, $startLine);
     }
 
     private static function _phpparser_array_to_ast_array(PhpParser\Node\Expression\ArrayCreationExpression $n, int $startLine) : \ast\Node {
@@ -1596,13 +1646,13 @@ class TolerantASTConverter {
             if ($item === null) {
                 $astItems[] = null;
             } else {
-                $astItems[] = astnode(\ast\AST_ARRAY_ELEM, 0, [
+                $astItems[] = new \ast\Node(\ast\AST_ARRAY_ELEM, 0, [
                     'value' => self::_phpparser_node_to_ast_node($item->value),
                     'key' => $item->key !== null ? self::_phpparser_node_to_ast_node($item->key) : null,
                 ], self::getStartLine($item));
             }
         }
-        return astnode(\ast\AST_ARRAY, \ast\flags\ARRAY_SYNTAX_SHORT, $astItems, $startLine);
+        return new \ast\Node(\ast\AST_ARRAY, \ast\flags\ARRAY_SYNTAX_SHORT, $astItems, $startLine);
     }
 
     private static function _phpparser_propertyfetch_to_ast_prop(PhpParser\Node\Expression\MemberAccessExpression $n, int $startLine) : ?\ast\Node {
@@ -1617,7 +1667,7 @@ class TolerantASTConverter {
                 return null;
             }
         }
-        return astnode(\ast\AST_PROP, 0, [
+        return new \ast\Node(\ast\AST_PROP, 0, [
             'expr'  => self::_phpparser_node_to_ast_node($n->var),
             'prop'  => is_object($name) ?  : $name,
         ], $startLine);
@@ -1650,14 +1700,52 @@ class TolerantASTConverter {
                 return null;
             }
         }
-        return astnode(\ast\AST_CLASS_CONST, 0, [
+        return new \ast\Node(\ast\AST_CLASS_CONST, 0, [
             'class' => self::_phpparser_node_to_ast_node($scopeResolutionQualifier),
             'const' => $name,
         ], $startLine);
     }
 
+    const _NODES_WITH_NULL_DOC_COMMENT = [
+        \ast\AST_CONST_ELEM => true,
+        \ast\AST_PROP_ELEM => true,
+    ];
+
     /**
-     * @suppress PhanDeprecatedProperty TODO: figure out alternative
+     * @suppress PhanTypeMismatchProperty https://github.com/etsy/phan/issues/609
+     * @suppress PhanUndeclaredProperty - docComment really exists.
+     * NOTE: this may be removed in the future.
+     *
+     * Phan was used while developing this. The asserts can be cleaned up in the future.
+     *
+     * NOTE: in AST version <= 40, may creates docComment as a property, but in version >= 45, adds it to $children
+     *
+     * @return \ast\Node
+     */
+    private static function _new_ast_node(int $kind, int $flags, array $children, int $lineno, string $docComment = null) : \ast\Node {
+        if (self::$ast_version >= 45) {
+            if (is_string($docComment) || array_key_exists($kind, self::_NODES_WITH_NULL_DOC_COMMENT)) {
+                $children['docComment'] = $docComment;
+            }
+            return new \ast\Node($kind, $flags, $children, $lineno);
+        }
+        $node = new \ast\Node($kind, $flags, $children, $lineno);
+        if (is_string($docComment)) {
+            $node->docComment = $docComment;
+        }
+        return $node;
+    }
+
+    /**
+     * @suppress PhanTypeMismatchProperty https://github.com/etsy/phan/issues/609
+     * @suppress PhanUndeclaredProperty - docComment really exists.
+     * NOTE: this may be removed in the future.
+     *
+     * Phan was used while developing this. The asserts can be cleaned up in the future.
+     *
+     * NOTE: in AST version <= 40, may creates docComment as a property, but in version >= 45, adds it to $children
+     *
+     * @return \ast\Node
      */
     private static function _phpparser_name_to_string(PhpParser\Node\QualifiedName $name) : string {
         // TODO: Handle error case
@@ -1665,44 +1753,43 @@ class TolerantASTConverter {
             return trim(self::_token_to_string($token));
         }, $name->parts));
     }
-}
 
-/**
- * @suppress PhanTypeMismatchProperty https://github.com/etsy/phan/issues/609
- * @suppress PhanUndeclaredProperty - docComment really exists.
- * NOTE: this may be removed in the future.
- *
- * Phan was used while developing this. The asserts can be cleaned up in the future.
- */
-function astnode(int $kind, int $flags, ?array $children, int $lineno, ?string $docComment = null) : \ast\Node {
-    $node = new \ast\Node();
-    $node->kind = $kind;
-    $node->flags = $flags;
-    $node->lineno = $lineno;
-    $node->children = $children;
-    if (\is_string($docComment)) {
-        $node->docComment = $docComment;
+    /**
+     * @suppress PhanTypeMismatchProperty https://github.com/etsy/phan/issues/609
+     * @suppress PhanUndeclaredProperty - docComment really exists.
+     * NOTE: this may be removed in the future.
+     *
+     * Phan was used while developing this. The asserts can be cleaned up in the future.
+     *
+     * NOTE: in AST version >= 45, this returns Node, but in version <=40, this returns Decl
+     *
+     * @return \ast\Node|\ast\Node\Decl
+     */
+    private static function _new_ast_decl(int $kind, int $flags, array $children, int $lineno, string $docComment = null, string $name = null, int $endLineno = 0, int $declId = -1) : \ast\Node {
+        if (self::$ast_version >= 45) {
+            $children45 = [];
+            $children45['name'] = $name;
+            $children45['docComment'] = $docComment;
+            $children45 += $children;
+            if ($declId >= 0 && self::$ast_version >= 50) {
+                $children45['__declId'] = $declId;
+            }
+            $node = new \ast\Node($kind, $flags, $children45, $lineno);
+            if (is_int($endLineno)) {
+                $node->endLineno = $endLineno;
+            }
+            return $node;
+        }
+        $decl = new \ast\Node\Decl($kind, $flags, $children, $lineno);
+        if (\is_string($docComment)) {
+            $decl->docComment = $docComment;
+        }
+        $decl->name = $name;
+        $decl->endLineno = $endLineno;
+        return $decl;
     }
-    return $node;
-}
 
-/**
- * @suppress PhanTypeMismatchProperty https://github.com/etsy/phan/issues/609
- * @suppress PhanUndeclaredProperty - docComment really exists.
- * NOTE: this may be removed in the future.
- *
- * Phan was used while developing this. The asserts can be cleaned up in the future.
- */
-function astdecl(int $kind, int $flags, ?array $children, int $lineno, string $docComment = null, string $name = null, int $endLineno = 0) : \ast\Node\Decl {
-    $node = new \ast\Node\Decl();
-    $node->kind = $kind;
-    $node->flags = $flags;
-    $node->lineno = $lineno;
-    $node->children = $children;
-    if (\is_string($docComment)) {
-        $node->docComment = $docComment;
+    private static function _next_decl_id() : int {
+        return self::$decl_id++;
     }
-    $node->name = $name;
-    $node->endLineno = $endLineno;
-    return $node;
 }
