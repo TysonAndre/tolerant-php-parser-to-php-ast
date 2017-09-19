@@ -36,29 +36,32 @@ class TolerantASTConverter {
      */
     private static $file_contents = '';
 
+    /**
+     * @var bool - File contents
+     */
     private static $should_add_placeholders = false;
 
     public static function set_should_add_placeholders(bool $value) : void {
         self::$should_add_placeholders = $value;
     }
 
-    public static function ast_parse_code_fallback(string $source, int $version, bool $suppressErrors = false, array &$errors = null) {
-        if (!\in_array($version, self::sUPPORTED_AST_VERSIONS)) {
+    public static function ast_parse_code_fallback(string $file_contents, int $version, bool $suppressErrors = false, array &$errors = null) {
+        if (!\in_array($version, self::SUPPORTED_AST_VERSIONS)) {
             throw new \InvalidArgumentException(sprintf("Unexpected version: want %d, got %d", implode(', ', self::SUPPORTED_AST_VERSIONS), $version));
         }
         // Aside: this can be implemented as a stub.
-        $parserNode = self::phpparser_parse($source, $suppressErrors, $errors);
-        return self::phpparser_to_phpast($parserNode, $version);
+        $parserNode = self::phpparser_parse($file_contents, $suppressErrors, $errors);
+        return self::phpparser_to_phpast($parserNode, $version, $file_contents);
     }
 
     /**
      * @return PhpParser\Node
      */
-    public static function phpparser_parse(string $source, bool $suppressErrors = false, array &$errors = null) {
+    public static function phpparser_parse(string $file_contents, bool $suppressErrors = false, array &$errors = null) {
         $parser = new Parser();  // TODO: Language version?
         // $nodeDumper = new PhpParser\NodeDumper();
         // TODO: Provide url
-        $result = $parser->parseSourceFile($source);
+        $result = $parser->parseSourceFile($file_contents);
         $errors = DiagnosticsProvider::getDiagnostics($result);
         return $result;
     }
