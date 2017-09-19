@@ -8,7 +8,7 @@ class ConversionTest extends \PHPUnit\Framework\TestCase {
     protected function _scanSourceDirForPHP(string $sourceDir) : array {
         $files = scandir($sourceDir);
         if (!$files) {
-            throw new InvalidArgumentException("No files in %s: scandir returned %s\n", [$files, $sourceDir]);
+            throw new \InvalidArgumentException(sprintf("No files in %s: scandir returned %s\n", $files, $sourceDir));
         }
         $files = array_filter(
             $files,
@@ -60,21 +60,23 @@ class ConversionTest extends \PHPUnit\Framework\TestCase {
         $ast = \ast\parse_code($contents, TolerantASTConverter::AST_VERSION);
         self::normalizeOriginalAST($ast);
         $this->assertInstanceOf('\ast\Node', $ast, 'Examples must be syntactically valid PHP parseable by php-ast');
-        $fallback_ast = \TolerantASTConverter\TolerantASTConverter::ast_parse_code_fallback($contents, TolerantASTConverter::AST_VERSION);
+        $fallback_ast = \TolerantASTConverter\TolerantASTConverter::parseCodeAsPHPAST($contents, TolerantASTConverter::AST_VERSION);
         $this->assertInstanceOf('\ast\Node', $fallback_ast, 'The fallback must also return a tree of php-ast nodes');
         $fallbackASTRepr = var_export($fallback_ast, true);
         $originalASTRepr = var_export($ast, true);
 
         if ($fallbackASTRepr !== $originalASTRepr) {
             $dump = 'could not dump';
-            $nodeDumper = new \PhpParser\NodeDumper([
-                'dumpComments' => true,
-                'dumpPositions' => true,
-            ]);
-            $phpParserNode = TolerantASTConverter::phpparser_parse($contents);
+            // $nodeDumper = new \PhpParser\NodeDumper([
+            //     'dumpComments' => true,
+            //     'dumpPositions' => true,
+            // ]);
+            $phpParserNode = TolerantASTConverter::phpParserParse($contents);
             try {
-                $dump = $nodeDumper->dump($phpParserNode);
-            } catch (\PhpParser\Error $e) {
+                // TODO: Reuse ASTDumper
+                $dump = var_export($phpParserNode, true);
+            } catch (\Throwable $e) {
+                $dump = 'could not dump: ' . get_class($e) . ': ' . $e->getMessage();
             }
             $original_ast_dump = \ast_dump($ast, AST_DUMP_LINENOS);
             $fallback_ast_dump = 'could not dump';

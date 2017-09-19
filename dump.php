@@ -50,7 +50,7 @@ EOB;
     }
     $expr = $argv[1];
     // Guess if this is a snippet or file contents
-    if ($expr[0] ?? '' !== '<') {
+    if (($expr[0] ?? '') !== '<') {
         $expr = '<' . '?php ' . $expr;
     }
 

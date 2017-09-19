@@ -181,13 +181,7 @@ return [
     'file_list' => [
         // 'vendor/phpunit/phpunit/src/Framework/TestCase.php',
     ],
-
-    // A file list that defines files that will be excluded
-    // from parsing and analysis and will not be read at all.
-    //
-    // This is useful for excluding hopelessly unanalyzable
-    // files that can't be removed for whatever reason.
-    'exclude_file_list' => [
+    'exclude_analysis_file_list' => [
         'src/util.php',
     ],
 
@@ -204,7 +198,9 @@ return [
     // your application should be included in this list.
     'directory_list' => [
         'src',
+        'tests/TolerantASTConverter',
         'vendor/microsoft/tolerant-php-parser/src',
+        'vendor/phpunit/phpunit/src',
     ],
     'file_list' => [
         'dump.php',
