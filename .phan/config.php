@@ -206,6 +206,9 @@ return [
         'src',
         'vendor/microsoft/tolerant-php-parser/src',
     ],
+    'file_list' => [
+        'dump.php',
+    ],
 
     // List of case-insensitive file extensions supported by Phan.
     // (e.g. php, html, htm)
