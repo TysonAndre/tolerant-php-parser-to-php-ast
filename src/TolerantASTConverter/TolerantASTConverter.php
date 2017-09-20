@@ -530,6 +530,15 @@ final class TolerantASTConverter {
                     $start_line
                 );
             },
+            'Microsoft\PhpParser\Node\QualifiedName' => function(PhpParser\Node\QualifiedName $n, int $start_line) : ast\Node {
+                $name = self::phpParserNameToString($n);
+                return new ast\Node(
+                    \ast\AST_NAME,
+                    \ast\flags\NAME_NOT_FQ,
+                    ['name' => $name],
+                    $start_line
+                );
+            },
             'Microsoft\PhpParser\Node\Parameter' => function(PhpParser\Node\Parameter $n, int $start_line) : ast\Node {
                 $type_line = self::getEndLine($n->typeDeclaration) ?: $start_line;
                 $default_line = self::getEndLine($n->typeDeclaration) ?: $type_line;
