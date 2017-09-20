@@ -132,8 +132,9 @@ class ConversionTest extends \PHPUnit\Framework\TestCase {
             $fallback_ast = self::normalizeLineNumbers($fallback_ast);
             $ast          = self::normalizeLineNumbers($ast);
         }
-        $fallback_ast_repr = var_export($fallback_ast, true);
-        $original_ast_repr = var_export($ast, true);
+        // TODO: Remove $ast->parent recursively
+        $fallback_ast_repr = var_dump($fallback_ast, true);
+        $original_ast_repr = var_dump($ast, true);
 
         if ($fallback_ast_repr !== $original_ast_repr) {
             $php_parser_node = $converter->phpparserParse($contents);
@@ -148,7 +149,7 @@ class ConversionTest extends \PHPUnit\Framework\TestCase {
             } catch(\Throwable $e) {
                 $fallback_ast_dump = 'could not dump php-ast Node: ' . get_class($e) . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString();
             }
-            $parser_export = var_export($php_parser_node, true);
+            $parser_export = var_dump($php_parser_node, true);
             $this->assertSame($original_ast_repr, $fallback_ast_repr,  <<<EOT
 The fallback must return the same tree of php-ast nodes
 File: $file_name

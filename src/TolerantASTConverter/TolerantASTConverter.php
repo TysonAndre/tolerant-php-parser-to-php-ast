@@ -1,4 +1,5 @@
 <?php declare(strict_types=1);
+
 namespace TolerantASTConverter;
 
 use ast;
@@ -84,6 +85,9 @@ final class TolerantASTConverter {
     /** @var string */
     private static $file_contents = '';
 
+    /** @var FilePositionMap */
+    private static $file_position_map;
+
     /** @var bool Sets equivalent static option in self::_start_parsing() */
     private $instance_should_add_placeholders = false;
 
@@ -127,17 +131,18 @@ final class TolerantASTConverter {
         if (!\in_array($ast_version, self::SUPPORTED_AST_VERSIONS)) {
             throw new \InvalidArgumentException(sprintf("Unexpected version: want %s, got %d", implode(', ', self::SUPPORTED_AST_VERSIONS), $ast_version));
         }
-        $this->startParsing($ast_version, $file_contents);
+        $this->startParsing($ast_version, $file_contents, $parser_node);
         $stmts = self::phpParserNodeToAstNode($parser_node);
         // return self::normalizeNamespaces($stmts);
         return $stmts;
     }
 
     /** @return void */
-    private function startParsing(int $ast_version, string $file_contents) {
+    private function startParsing(int $ast_version, string $file_contents, PhpParser\Node $parser_node) {
         self::$ast_version = $ast_version;
         self::$decl_id = 0;
         self::$should_add_placeholders = $this->instance_should_add_placeholders;
+        self::$file_position_map = new FilePositionMap($file_contents, $parser_node);
         // $file_contents required for looking up line numbers.
         // TODO: Other data structures?
         self::$file_contents = $file_contents;
@@ -236,16 +241,22 @@ final class TolerantASTConverter {
         return $callback($n, self::getStartLine($n));
     }
 
-    private static function getStartLine(PhpParser\Node $n) : int {
+    private static function getStartLine(?PhpParser\Node $n) : int {
+        if (!$n) {
+            return 0;
+        }
         // TODO: binary search in an array mapping line number to character offset?
         // Currently returns character offset.
-        return $n->getStart();
+        return self::$file_position_map->getStartLine($n);
     }
 
-    private static function getEndLine(PhpParser\Node $n) : int {
+    private static function getEndLine(?PhpParser\Node $n) : int {
+        if (!$n) {
+            return 0;
+        }
         // TODO: binary search in an array mapping line number to character offset?
         // Currently returns character offset.
-        return $n->getEndPosition();
+        return self::$file_position_map->getEndLine($n);
     }
 
     /**
@@ -589,6 +600,9 @@ final class TolerantASTConverter {
             'Microsoft\PhpParser\Node\Scalar\MagicConst\TraitDeclaration' => function(PhpParser\Node\Scalar\MagicConst\TraitDeclaration $n, int $start_line) : ast\Node {
                 return self::astMagicConst(ast\flags\MAGIC_TRAIT, $start_line);
             }, */
+            'Microsoft\PhpParser\Node\Statement\ExpressionStatement' => function(PhpParser\Node\Statement\ExpressionStatement $n, int $start_line) : ?ast\Node {
+                return self::phpParserNodeToAstNode($n->expression);
+            },
             'Microsoft\PhpParser\Node\Statement\BreakOrContinueStatement' => function(PhpParser\Node\Statement\BreakOrContinueStatement $n, int $start_line) : ast\Node {
                 switch ($n->breakOrContinueKeyword->length) {
                 case 5: $kind = ast\AST_BREAK;
@@ -1811,7 +1825,7 @@ Node\SourceFileNode
      * @param PhpParser\Node\Expression|PhpParser\Node\QualifiedName|PhpParser\Token $scope_resolution_qualifier
      */
     private static function phpParserClassconstfetchToAstClassconstfetch($scope_resolution_qualifier, PhpParser\Token $name, int $start_line) : ?ast\Node {
-        $name = self::phpParserNodeToAstNode($name);
+        $name = self::tokenToString($name);
         // TODO: proper error handling of incomplete tokens?
         if ($name === null) {
             if (self::$should_add_placeholders) {
