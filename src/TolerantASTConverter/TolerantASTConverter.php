@@ -260,20 +260,23 @@ final class TolerantASTConverter {
      */
     private static function initHandleMap() : array {
         $closures = [
-            'Microsoft\PhpParser\Node\Expression\ArgumentExpression'                            => function(PhpParser\Node\Expression\ArgumentExpression $n, int $start_line) {
+            'Microsoft\PhpParser\Node\SourceFileNode' => function(PhpParser\Node\SourceFileNode $n, int $start_line) : ?\ast\Node {
+                return self::phpParserStmtlistToAstNode($n->statementList, self::getStartLine($n) ?: 1);
+            },
+            'Microsoft\PhpParser\Node\Expression\ArgumentExpression' => function(PhpParser\Node\Expression\ArgumentExpression $n, int $start_line) {
                 // FIXME support foo(...$args)
                 return self::phpParserNodeToAstNode($n->expression/*, $n->dotDotdotToken */);
             },
-            'Microsoft\PhpParser\Node\Expression\ArrayCreationExpression'                    => function(PhpParser\Node\Expression\ArrayCreationExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\ArrayCreationExpression' => function(PhpParser\Node\Expression\ArrayCreationExpression $n, int $start_line) : ast\Node {
                 return self::phpParserArrayToAstArray($n, $start_line);
             },
-            'Microsoft\PhpParser\Node\Expression\SubscriptExpression'            => function(PhpParser\Node\Expression\SubscriptExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\SubscriptExpression' => function(PhpParser\Node\Expression\SubscriptExpression $n, int $start_line) : ast\Node {
                 return new ast\Node(ast\AST_DIM, 0, [
                     'expr' => self::phpParserNodeToAstNode($n->postfixExpression),
                     'dim' => $n->accessExpression !== null ? self::phpParserNodeToAstNode($n->accessExpression) : null,
                 ], $start_line);
             },
-            'Microsoft\PhpParser\Node\Expression\AssignmentExpression'                    => function(PhpParser\Node\Expression\AssignmentExpression $n, int $start_line) : ?ast\Node {
+            'Microsoft\PhpParser\Node\Expression\AssignmentExpression' => function(PhpParser\Node\Expression\AssignmentExpression $n, int $start_line) : ?ast\Node {
                 $op_kind = $n->operator->kind;
                 assert($op_kind === TokenKind::EqualsToken);
                 // FIXME switch on $n->kind
@@ -699,7 +702,7 @@ final class TolerantASTConverter {
             'Microsoft\PhpParser\Node\Statement\FunctionDeclaration' => function(PhpParser\Node\Statement\FunctionDeclaration $n, int $start_line) : ast\Node {
                 $end_line = self::getEndLine($n) ?: $start_line;
                 $return_type = $n->returnType;
-                $return_type_line = self::getEndLine($return_type) ?: $end_line;
+                $return_type_line = ($return_type ? self::getEndLine($return_type) : 0) ?: $end_line;
                 $ast_return_type = self::phpParserTypeToAstNode($return_type, $return_type_line);
 
                 return self::astDeclFunction(
@@ -1218,7 +1221,7 @@ Node\SourceFileNode
 
     private static function phpParserParamsToAstParams(?PhpParser\Node\DelimitedList\ParameterDeclarationList $parser_params, int $line) : ast\Node {
         $new_params = [];
-        foreach ($parser_params->children as $parser_node) {
+        foreach ($parser_params->children ?? [] as $parser_node) {
             $new_params[] = self::phpParserNodeToAstNode($parser_node);
         }
         $new_params_node = new ast\Node();
