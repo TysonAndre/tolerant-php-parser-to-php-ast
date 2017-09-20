@@ -751,8 +751,9 @@ final class TolerantASTConverter {
             'Microsoft\PhpParser\Node\Statement\IfStatementNode' => function(PhpParser\Node\Statement\IfStatementNode $n, int $start_line) : ast\Node {
                 return self::phpParserIfStmtToAstIfStmt($n);
             },
-            'Microsoft\PhpParser\Node\Statement\InlineHtml' => function(PhpParser\Node\Statement\InlineHtml $n, int $start_line) : ast\Node {
-                return self::astStmtEcho($n->text, $start_line);
+            /** @return ast\Node|ast\Node[] */
+            'Microsoft\PhpParser\Node\Statement\InlineHtml' => function(PhpParser\Node\Statement\InlineHtml $n, int $start_line) {
+                return $n->text !== null ? self::astStmtEcho($n->text, $start_line) : [];
             },
             /*
 Node\SourceFileNode
@@ -1218,6 +1219,9 @@ Node\SourceFileNode
         return new ast\Node(ast\AST_NAME, ast\flags\NAME_NOT_FQ, ['name' => $imploded_parts], $line);
     }
 
+    /**
+     * @param PhpParser\Node|PhpParser\Token $expr
+     */
     private static function astNodeVariable($expr, int $line) : ?ast\Node {
         // TODO: 2 different ways to handle an Error. 1. Add a placeholder. 2. remove all of the statements in that tree.
         if ($expr instanceof PhpParser\Node) {
@@ -1228,6 +1232,16 @@ Node\SourceFileNode
                 } else {
                     return null;
                 }
+            }
+        } else if ($expr instanceof PhpParser\Token) {
+            if ($expr instanceof PhpParser\MissingToken) {
+                if (self::$should_add_placeholders) {
+                    $expr = '__INCOMPLETE_VARIABLE__';
+                } else {
+                    return null;
+                }
+            } else {
+                $expr = self::tokenToString($expr);
             }
         }
         $node = new ast\Node;

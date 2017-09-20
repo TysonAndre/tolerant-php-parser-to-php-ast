@@ -1,6 +1,7 @@
 <?php declare(strict_types = 1);
 namespace TolerantASTConverter\Tests;
 use TolerantASTConverter\TolerantASTConverter;
+use TolerantASTConverter\NodeDumper;
 
 require_once __DIR__ . '/../../src/util.php';
 
@@ -232,7 +233,10 @@ EOT;
         $original_ast_repr = var_export($ast, true);
 
         if ($fallback_ast_repr !== $original_ast_repr) {
-            $dump = var_dump($php_parser_node, true);
+            $dumper = new NodeDumper($incomplete_contents);
+            $dumper->setIncludeTokenKind(true);
+            $dumper->setIncludeOffset(true);
+            $dump = $dumper->dumpTreeAsString($php_parser_node);
             $original_ast_dump = \ast_dump($ast);
             // $parser_export = var_export($php_parser_node, true);
             $this->assertSame($original_ast_repr, $fallback_ast_repr,  <<<EOT

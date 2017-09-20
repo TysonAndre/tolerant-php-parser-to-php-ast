@@ -3,8 +3,8 @@
 namespace TolerantASTConverter\Tests;
 
 use TolerantASTConverter\TolerantASTConverter;
+use TolerantASTConverter\NodeDumper;
 
-use ASTConverter\ASTConverter;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use RuntimeException;
@@ -133,13 +133,15 @@ class ConversionTest extends \PHPUnit\Framework\TestCase {
             $ast          = self::normalizeLineNumbers($ast);
         }
         // TODO: Remove $ast->parent recursively
-        $fallback_ast_repr = var_dump($fallback_ast, true);
+        $fallback_ast_repr = var_dump($fallback_ast);
         $original_ast_repr = var_dump($ast, true);
 
         if ($fallback_ast_repr !== $original_ast_repr) {
+            $node_dumper = new NodeDumper($contents);
+            $node_dumper->setIncludeTokenKind(true);
             $php_parser_node = $converter->phpparserParse($contents);
             try {
-                $dump = var_dump($php_parser_node, true);
+                $dump = $node_dumper->dumpTreeAsString($php_parser_node);
             } catch (\Throwable $e) {
                 $dump = 'could not dump PhpParser Node: ' . get_class($e) . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString();
             }

@@ -28,7 +28,11 @@ if (file_exists(__DIR__ . "/../../../vendor/autoload.php")) {
 } else {
     require __DIR__ . "/vendor/autoload.php";
 }
-use Microsoft\PhpParser\{DiagnosticsProvider, Node, Token, Parser, PositionUtilities};
+use Microsoft\PhpParser\DiagnosticsProvider;
+use Microsoft\PhpParser\Node;
+use Microsoft\PhpParser\Token;
+use Microsoft\PhpParser\Parser;
+use TolerantASTConverter\NodeDumper;
 
 dump_main();
 
@@ -69,55 +73,9 @@ function dump_expr(string $expr) {
 
     $ast_node->parent = null;
     unset($ast_node->statementList[0]);
-    $dumper = new ASTDumper($expr, false, true, '    ');
+    $dumper = new NodeDumper($expr);
+    $dumper->setIncludeTokenKind(true);
     $dumper->dumpTree($ast_node);
     // var_export($ast_node->statementList);
     echo "\n";
-}
-
-class ASTDumper {
-    /** @var string */
-    private $file_contents;
-    /** @var bool */
-    private $include_offset;
-    /** @var bool */
-    private $include_token_kind;
-    /** @var string */
-    private $indent;
-
-    public function __construct(string $file_contents, bool $include_offset = false, bool $include_token_kind = false, string $indent = '    ') {
-        $this->file_contents = $file_contents;
-        $this->include_offset = $include_offset;
-        $this->include_token_kind = $include_token_kind;
-        $this->indent = $indent;
-    }
-
-    public function dumpClassName(Node $ast_node) : string {
-        $name = get_class($ast_node);
-        if (stripos($name, 'Microsoft\\PhpParser\\') === 0) {
-            $name = substr($name, 20);
-        }
-        return $name;
-    }
-
-    /**
-     * @param Node|Token $ast_node
-     * @param string $padding (to be echoed before the current node
-     * @return void
-     */
-    public function dumpTree($ast_node, string $key = '', string $padding = '') {
-        if ($ast_node instanceof Node) {
-            $offset = $ast_node->getStart();
-            echo $padding . ($key !== '' ? $key . ': ' : '') . $this->dumpClassName($ast_node) . ($this->include_offset ? " (@" . $offset . ")" : "") . "\n";
-            foreach ($ast_node->getChildNodesAndTokens() as $name => $child) {
-                $this->dumpTree($child, $name, $padding . $this->indent);
-            }
-        } else if ($ast_node instanceof Token) {
-            echo $padding . ($key !== '' ? $key . ': ' : '') . "Token: " . $ast_node->getTokenKindNameFromValue($ast_node->kind) . ($this->include_token_kind ? '(' . $ast_node->kind . ')' : '') . ': ' . json_encode(substr($this->file_contents, $ast_node->fullStart, $ast_node->length)) . "\n";
-        } else {
-            echo "Unexpected type of $ast_node was seen\n";
-            var_export($ast_node);
-            exit(2);
-        }
-    }
 }
