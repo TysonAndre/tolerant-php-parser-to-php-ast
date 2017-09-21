@@ -252,7 +252,6 @@ final class TolerantASTConverter {
      */
     private static final function phpParserNodeToAstNode($n) {
         if (!($n instanceof PhpParser\Node) && !($n instanceof Token)) {
-            debug_print_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
             throw new \InvalidArgumentException("Invalid type for node: " . (is_object($n) ? get_class($n) : gettype($n)) . ": " . self::debugDumpNodeOrToken($n));
         }
 
@@ -470,6 +469,11 @@ final class TolerantASTConverter {
                     $start_line
                 );
             },
+            /** @return string */
+            'Microsoft\PhpParser\Token' => function(PhpParser\Token $node, int $_) {
+                return self::tokenToString($node);
+            },
+            /** @return null */
             'Microsoft\PhpParser\MissingToken' => function(PhpParser\MissingToken $unused_node, int $_) {
                 // This is where PhpParser couldn't parse a node.
                 // TODO: handle this.
@@ -533,6 +537,9 @@ final class TolerantASTConverter {
                 return $e;
             },
             'Microsoft\PhpParser\Node\Expression\ArrayCreationExpression' => function(PhpParser\Node\Expression\ArrayCreationExpression $n, int $start_line) : ast\Node {
+                return self::phpParserArrayToAstArray($n, $start_line);
+            },
+            'Microsoft\PhpParser\Node\Expression\ListIntrinsicExpression' => function(PhpParser\Node\Expression\ListIntrinsicExpression $n, int $start_line) : ast\Node {
                 return self::phpParserListToAstList($n, $start_line);
             },
             'Microsoft\PhpParser\Node\Expression\ObjectCreationExpression' => function(PhpParser\Node\Expression\ObjectCreationExpression $n, int $start_line) : ast\Node {
@@ -627,14 +634,13 @@ final class TolerantASTConverter {
             },
             'Microsoft\PhpParser\Node\Parameter' => function(PhpParser\Node\Parameter $n, int $start_line) : ast\Node {
                 $type_line = self::getEndLine($n->typeDeclaration) ?: $start_line;
-                $default_line = self::getEndLine($n->typeDeclaration) ?: $type_line;
                 return self::astNodeParam(
                     $n->questionToken !== null,
                     $n->byRefToken !== null,
                     $n->dotDotDotToken !== null,
                     self::phpParserTypeToAstNode($n->typeDeclaration, $type_line),
                     self::variableTokenToString($n->variableName),
-                    self::phpParserTypeToAstNode($n->default, $default_line),
+                    $n->default !== null ? self::phpParserNodeToAstNode($n->default) : null,
                     $start_line
                 );
             },
@@ -811,7 +817,7 @@ final class TolerantASTConverter {
                 return count($ast_echos) === 1 ? $ast_echos[0] : $ast_echos;
             },
             'Microsoft\PhpParser\Node\Statement\ForeachStatement' => function(PhpParser\Node\Statement\ForeachStatement $n, int $start_line) : ast\Node {
-                $value = self::phpParserNodeToAstNode($n->foreachValue);
+                $value = self::phpParserNodeToAstNode($n->foreachValue->expression);
                 $foreachValue = $n->foreachValue;
                 if ($foreachValue->ampersand) {
                     $value = new ast\Node(
@@ -1880,10 +1886,18 @@ Node\SourceFileNode
         return new ast\Node(ast\AST_CALL, 0, ['expr' => $expr, 'args' => $args], $start_line);
     }
 
+    /**
+     * @param ast\Node $expr
+     * @param ast\Node $method
+     */
     private static function astNodeMethodCall($expr, $method, ast\Node $args, int $start_line) : ast\Node {
         return new ast\Node(ast\AST_METHOD_CALL, 0, ['expr' => $expr, 'method' => $method, 'args' => $args], $start_line);
     }
 
+    /**
+     * @param ast\Node|string $class
+     * @param ast\Node $method
+     */
     private static function astNodeStaticCall($class, $method, ast\Node $args, int $start_line) : ast\Node {
         // TODO: is this applicable?
         if (\is_string($class)) {
@@ -1914,37 +1928,34 @@ Node\SourceFileNode
 
     }
 
-    private static function phpParserListToAstList(PhpParser\Node\Expression\ArrayCreationExpression $n, int $start_line) : ast\Node {
+    private static function phpParserListToAstList(PhpParser\Node\Expression\ListIntrinsicExpression $n, int $start_line) : ast\Node {
         $ast_items = [];
-        foreach ($n->arrayElements->children as $item) {
-            if ($item === null) {
-                $ast_items[] = null;
-            } else {
-                if ($item instanceof Token) {
-                    continue;
-                }
-                assert($item instanceof PhpParser\Node\ArrayElement);
-                $ast_items[] = new ast\Node(ast\AST_ARRAY_ELEM, 0, [
-                    'value' => self::phpParserNodeToAstNode($item->elementValue),
-                    'key' => $item->elementKey !== null ? self::phpParserNodeToAstNode($item->elementKey) : null,
-                ], self::getStartLine($item));
+        foreach ($n->listElements->children as $item) {
+            // FIXME handle list(,,$var3) = $array, skipping commas isn't enough, add null
+            if ($item instanceof Token) {
+                continue;
             }
+            assert($item instanceof PhpParser\Node\ArrayElement);
+            $ast_items[] = new ast\Node(ast\AST_ARRAY_ELEM, 0, [
+                'value' => self::phpParserNodeToAstNode($item->elementValue),
+                'key' => $item->elementKey !== null ? self::phpParserNodeToAstNode($item->elementKey) : null,
+            ], self::getStartLine($item));
         }
         return new ast\Node(ast\AST_ARRAY, ast\flags\ARRAY_SYNTAX_LIST, $ast_items, $start_line);
     }
 
     private static function phpParserArrayToAstArray(PhpParser\Node\Expression\ArrayCreationExpression $n, int $start_line) : ast\Node {
         $ast_items = [];
-        foreach ($n->arrayElements as $item) {
-            if ($item === null) {
-                $ast_items[] = null;
-            } else {
-                $flags = $item->byRef ? ast\flags\PARAM_REF : 0;
-                $ast_items[] = new ast\Node(ast\AST_ARRAY_ELEM, $flags, [
-                    'value' => self::phpParserNodeToAstNode($item->value),
-                    'key' => $item->key !== null ? self::phpParserNodeToAstNode($item->key) : null,
-                ], self::getStartLine($item));
+        foreach ($n->arrayElements->children as $item) {
+            if ($item instanceof Token) {
+                continue;
             }
+            assert($item instanceof PhpParser\Node\ArrayElement);
+            $flags = $item->byRef ? ast\flags\PARAM_REF : 0;
+            $ast_items[] = new ast\Node(ast\AST_ARRAY_ELEM, $flags, [
+                'value' => self::phpParserNodeToAstNode($item->elementValue),
+                'key' => $item->elementKey !== null ? self::phpParserNodeToAstNode($item->elementKey) : null,
+            ], self::getStartLine($item));
         }
         if (PHP_VERSION_ID < 70100) {
             $flags = 0;
@@ -1957,7 +1968,12 @@ Node\SourceFileNode
     /** @return ?ast\Node */
     private static function phpParserMemberAccessExpressionToAstProp(PhpParser\Node\Expression\MemberAccessExpression $n, int $start_line) {
         // TODO: Check for incomplete tokens?
-        $name = self::phpParserNodeToAstNode($n->memberName);
+        $member_name = $n->memberName;
+        if ($member_name instanceof Token) {
+            $name = self::tokenToString($member_name);  // 'y' in $x->y
+        } else {
+            $name = self::phpParserNodeToAstNode($member_name);  // complex expression
+        }
         if ($name === null) {
             if (self::$should_add_placeholders) {
                 $name = '__INCOMPLETE_PROPERTY__';
@@ -1971,7 +1987,10 @@ Node\SourceFileNode
         ], $start_line);
     }
 
-    /** @return int|string|float|bool|null */
+    /**
+     * @suppress PhanAccessMethodInternal
+     * @return int|string|float|bool|null
+     */
     private static function tokenToScalar(Token $n) {
         $str = self::tokenToString($n);
         $int = \filter_var($str, FILTER_VALIDATE_INT);

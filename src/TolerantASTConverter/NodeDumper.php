@@ -103,8 +103,11 @@ class NodeDumper {
                 $this->include_token_kind ? '(' . $ast_node->kind . ')' : '',
                 \json_encode(substr($this->file_contents, $ast_node->fullStart, $ast_node->length))
             );
+        } else if (\is_scalar($ast_node) || $ast_node === null) {
+            return \var_export($ast_node, true);
         } else {
-            throw new \InvalidArgumentException("Unexpected type of \$ast_node was seen in dumper: " . is_object($ast_node) ? get_class($ast_node) : gettype($ast_node));
+            $type = is_object($ast_node) ? get_class($ast_node) : gettype($ast_node);
+            throw new \InvalidArgumentException("Unexpected type of \$ast_node was seen in dumper: " . $type);
         }
     }
 

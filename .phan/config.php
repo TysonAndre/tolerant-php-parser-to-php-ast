@@ -200,6 +200,7 @@ return [
         'src',
         'tests/TolerantASTConverter',
         'vendor/microsoft/tolerant-php-parser/src',
+        'vendor/nikic/php-parser/lib',
         'vendor/phpunit/phpunit/src',
     ],
     'file_list' => [

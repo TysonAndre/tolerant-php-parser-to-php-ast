@@ -164,10 +164,15 @@ function format_flags(int $kind, int $flags) : string {
     return (string) $flags;
 }
 
-/** Dumps abstract syntax tree */
+/**
+ * Dumps abstract syntax tree
+ * @suppress PhanUndeclaredProperty
+ */
 function ast_dump($ast, int $options = 0) : string {
     if ($ast instanceof ast\Node) {
-        $result = ast\get_kind_name($ast->kind);
+        $kind = $ast->kind;
+        // $kind can be invalid for placeholder nodes or unexpected tolerant-php-parser classes
+        $result = is_int($kind) ? ast\get_kind_name($kind) : ("INVALID KIND: " . var_export($kind, true));
 
         if ($options & AST_DUMP_LINENOS) {
             $result .= " @ $ast->lineno";
@@ -176,8 +181,8 @@ function ast_dump($ast, int $options = 0) : string {
             }
         }
 
-        if (ast\kind_uses_flags($ast->kind)) {
-            $result .= "\n    flags: " . format_flags($ast->kind, $ast->flags);
+        if (\is_int($kind) && ast\kind_uses_flags($kind)) {
+            $result .= "\n    flags: " . format_flags($kind, $ast->flags);
         }
         if (isset($ast->name)) {
             $result .= "\n    name: $ast->name";
@@ -185,8 +190,13 @@ function ast_dump($ast, int $options = 0) : string {
         if (isset($ast->docComment)) {
             $result .= "\n    docComment: $ast->docComment";
         }
-        foreach ($ast->children as $i => $child) {
-            $result .= "\n    $i: " . str_replace("\n", "\n    ", ast_dump($child, $options));
+        $children = $ast->children;
+        if (\is_array($children)) {
+            foreach ($children as $i => $child) {
+                $result .= "\n    $i: " . \str_replace("\n", "\n    ", ast_dump($child, $options));
+            }
+        } else {
+            $result .= "\n    children: INVALID (type=" . (\is_object($children) ? \get_class($children) : \gettype($children)) . ")";
         }
         return $result;
     } else if ($ast === null) {
