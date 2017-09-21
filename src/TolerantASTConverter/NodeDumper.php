@@ -72,6 +72,14 @@ class NodeDumper {
         return $name;
     }
 
+    public function dumpTokenClassName(Token $ast_node) : string {
+        $name = get_class($ast_node);
+        if (stripos($name, 'Microsoft\\PhpParser\\') === 0) {
+            $name = substr($name, 20);
+        }
+        return $name;
+    }
+
     /**
      * @param Node|Token $ast_node
      * @param string $padding (to be echoed before the current node
@@ -86,7 +94,15 @@ class NodeDumper {
             }
             return \implode('', $result);
         } else if ($ast_node instanceof Token) {
-            return $padding . ($key !== '' ? $key . ': ' : '') . "Token: " . $ast_node->getTokenKindNameFromValue($ast_node->kind) . ($this->include_token_kind ? '(' . $ast_node->kind . ')' : '') . ': ' . json_encode(substr($this->file_contents, $ast_node->fullStart, $ast_node->length)) . "\n";
+            return \sprintf(
+                "%s%s%s: %s%s: %s\n",
+                $padding,
+                $key !== '' ? $key . ': ' : '',
+                $this->dumpTokenClassName($ast_node),
+                $ast_node->getTokenKindNameFromValue($ast_node->kind),
+                $this->include_token_kind ? '(' . $ast_node->kind . ')' : '',
+                \json_encode(substr($this->file_contents, $ast_node->fullStart, $ast_node->length))
+            );
         } else {
             echo "Unexpected type of $ast_node was seen\n";
             var_export($ast_node);
@@ -100,18 +116,6 @@ class NodeDumper {
      * @return void
      */
     public function dumpTree($ast_node, string $key = '', string $padding = '') {
-        if ($ast_node instanceof Node) {
-            $offset = $ast_node->getStart();
-            echo $padding . ($key !== '' ? $key . ': ' : '') . $this->dumpClassName($ast_node) . ($this->include_offset ? " (@" . $offset . ")" : "") . "\n";
-            foreach ($ast_node->getChildNodesAndTokens() as $name => $child) {
-                $this->dumpTree($child, $name, $padding . $this->indent);
-            }
-        } else if ($ast_node instanceof Token) {
-            echo $padding . ($key !== '' ? $key . ': ' : '') . "Token: " . $ast_node->getTokenKindNameFromValue($ast_node->kind) . ($this->include_token_kind ? '(' . $ast_node->kind . ')' : '') . ': ' . json_encode(substr($this->file_contents, $ast_node->fullStart, $ast_node->length)) . "\n";
-        } else {
-            echo "Unexpected type of $ast_node was seen\n";
-            var_export($ast_node);
-            exit(2);
-        }
+        echo $this->dumpTreeAsString($ast_node, $key, $padding);
     }
 }
