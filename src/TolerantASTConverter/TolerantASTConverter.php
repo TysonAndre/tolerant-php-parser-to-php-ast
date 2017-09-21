@@ -620,7 +620,7 @@ final class TolerantASTConverter {
                 $name = self::phpParserNameToString($n);
                 return new ast\Node(
                     \ast\AST_NAME,
-                    \ast\flags\NAME_NOT_FQ,
+                    \ast\flags\NAME_FQ,
                     ['name' => $name],
                     $start_line
                 );
@@ -740,6 +740,19 @@ final class TolerantASTConverter {
                     $n->classBaseClause !== null? self::phpParserNameToString($n->classBaseClause->baseClass) : null,
                     $n->classInterfaceClause,
                     self::phpParserStmtlistToAstNode($n->classMembers->classMemberDeclarations ?? [], $start_line),
+                    $start_line,
+                    $end_line,
+                    $n->getDocCommentText()
+                );
+            },
+            'Microsoft\PhpParser\Node\Statement\TraitDeclaration' => function(PhpParser\Node\Statement\TraitDeclaration $n, int $start_line) : ast\Node {
+                $end_line = self::getEndLine($n) ?: $start_line;
+                return self::astStmtClass(
+                    ast\flags\CLASS_TRAIT,
+                    self::tokenToString($n->name),
+                    null,
+                    null,
+                    self::phpParserStmtlistToAstNode($n->traitMembers->traitMemberDeclarations ?? [], $start_line),
                     $start_line,
                     $end_line,
                     $n->getDocCommentText()
@@ -962,21 +975,6 @@ Node\SourceFileNode
                 );
             },
 
-            /**
-            'Microsoft\PhpParser\Node\Statement\TraitDeclaration' => function(PhpParser\Node\Statement\TraitDeclaration $n, int $start_line) : ast\Node {
-                $end_line = self::getEndLine($n) ?: $start_line;
-                return self::astStmtClass(
-                    ast\flags\CLASS_TRAIT,
-                    $n->name,
-                    null,
-                    null,
-                    self::phpParserStmtlistToAstNode($n->statements, $start_line),
-                    $start_line,
-                    $end_line,
-                    $n->getDocCommentText()
-                );
-            },
-             */
             'Microsoft\PhpParser\Node\TraitUseClause' => function(PhpParser\Node\TraitUseClause $n, int $start_line) : ast\Node {
                 $clauses_list_node = $n->traitSelectAndAliasClauses;
                 if ($clauses_list_node instanceof PhpParser\Node\DelimitedList\TraitSelectOrAliasClauseList) {
@@ -1230,11 +1228,11 @@ Node\SourceFileNode
 
     /**
      * @param PhpParser\Node|Token|null $type
-     * @return ast\Node|null
+     * (at)return ?ast\Node TODO: always return a node or null
      */
-    private static function phpParserTypeToAstNode($type, int $line) {
+    private static function phpParserTypeToAstNode($type, int $line) : ?ast\Node{
         if (is_null($type)) {
-            return $type;
+            return null;
         }
         if ($type instanceof Token) {
             $type = self::tokenToString($type);
@@ -1980,8 +1978,12 @@ Node\SourceFileNode
         if ($int !== false) {
             return $int;
         }
-        // TODO: other cases
-        return $str;
+        $float = \filter_var($str, FILTER_VALIDATE_FLOAT);
+        if ($float !== false) {
+            return $float;
+        }
+
+        return \PhpParser\Node\Scalar\String_::parse($str);
     }
 
     private static function variableTokenToString(Token $n) : string {
