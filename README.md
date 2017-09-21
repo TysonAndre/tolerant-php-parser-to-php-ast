@@ -1,13 +1,14 @@
-PHP-Parser to php-ast
-=====================
+Tolerant-PHP-Parser to php-ast
+==============================
 
 [![Build Status](https://travis-ci.org/TysonAndre/tolerant-php-parser-to-php-ast.svg?branch=master)](https://travis-ci.org/TysonAndre/tolerant-php-parser-to-php-ast)
 
-No tests are failing
+convert from Microsoft\PHPParser\Node to ast\Node: https://github.com/Microsoft/tolerant-php-parser/issues/113
 
-- This is 90% done
-- The test suite is not yet comprehensive.
-- Need to normalize namespaces.
+Most tests are failing
+
+- Still being ported from https://github.com/TysonAndre/php-parser-to-php-ast
+- The test suite is not yet comprehensive, may need to handle tokens
 
 [Current Issues](https://github.com/TysonAndre/tolerant-php-parser-to-php-ast/issues/)
 
@@ -17,9 +18,11 @@ No tests are failing
 Usage
 -----
 
+**Need to fix tests first**
+
 Using it as a slow substitute for php-ast
 
-- [tests/ASTConverter/ConversionTest.php](https://github.com/TysonAndre/tolerant-php-parser-to-php-ast/blob/master/tests/TolerantASTConverter/ConversionTest.php)
+- [tests/TolerantASTConverter/ConversionTest.php](https://github.com/TysonAndre/tolerant-php-parser-to-php-ast/blob/master/tests/TolerantASTConverter/ConversionTest.php)
 
 Using it as an error-tolerant substitute for php-ast (e.g. for use in IDEs)
 
@@ -31,11 +34,11 @@ Using it as an error-tolerant substitute for php-ast (e.g. for use in IDEs)
 Running unit tests
 ------------------
 
-To run unit tests, you must install [nikic/php-ast](https://github.com/nikic/php-ast)
+To run unit tests, you must install [nikic/php-ast](https://github.com/nikic/php-ast) 0.1.5+ (for the expected results to be created)
 
 - Then run `vendor/bin/phpunit`
 
 Possible Future Enhancements
 ----------------------------
 
-- https://github.com/Microsoft/tolerant-php-parser/issues/113
+- 
