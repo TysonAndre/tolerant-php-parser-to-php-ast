@@ -1,4 +1,14 @@
-<phpunit>
+<phpunit
+        colors="true"
+        convertErrorsToExceptions="true"
+        convertNoticesToExceptions="true"
+        convertWarningsToExceptions="true"
+        stopOnError="false"
+        stopOnFailure="false"
+        stopOnIncomplete="false"
+        stopOnSkipped="false"
+        stopOnRisky="false"
+        verbose="false">
     <testsuites>
         <testsuite name="ConverterTests">
             <directory>tests</directory>

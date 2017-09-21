@@ -226,7 +226,9 @@ return [
     ],
 
     // A list of plugin files to execute
-    'plugins' => [
-    ],
-
+    'plugins' => array_merge([
+        'vendor/etsy/phan/.phan/plugins/AlwaysReturnPlugin.php',
+        'vendor/etsy/phan/.phan/plugins/DollarDollarPlugin.php',
+        'vendor/etsy/phan/.phan/plugins/DuplicateArrayKeyPlugin.php',
+    ], file_exists(__DIR__ . '/plugins/UnusedVariablePlugin.php') ? [__DIR__ . '/plugins/UnusedVariablePlugin.php'] : []),
 ];

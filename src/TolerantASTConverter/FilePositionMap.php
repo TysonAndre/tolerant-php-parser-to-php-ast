@@ -61,11 +61,28 @@ class FilePositionMap {
         }
     }
 
-    public function getStartLine(Node $node) : int {
+    // TODO update if https://github.com/Microsoft/tolerant-php-parser/issues/166
+    // Add an alias?
+    public function getNodeStartLine(Node $node) : int {
         return $this->fetchLineNumberForOffset($node->getStart());
     }
 
-    public function getEndLine(Node $node) : int {
+    public function getTokenStartLine(Token $token) : int {
+        return $this->fetchLineNumberForOffset($token->start);
+    }
+
+    /** @param Node|Token $node */
+    public function getStartLine($node) : int {
+        if ($node instanceof Token) {
+            $offset = $node->start;
+        } else {
+            $offset = $node->getStart();
+        }
+        return $this->fetchLineNumberForOffset($offset);
+    }
+
+    /** @param Node|Token $node */
+    public function getEndLine($node) : int {
         return $this->fetchLineNumberForOffset($node->getEndPosition());
     }
 
