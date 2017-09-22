@@ -514,6 +514,12 @@ final class TolerantASTConverter {
                 // TODO: handle this.
                 return null;
             },
+            /** @return null */
+            'Microsoft\PhpParser\SkippedToken' => function(PhpParser\MissingToken $unused_node, int $_) {
+                // This is where PhpParser couldn't parse a token and skipped over it
+                // TODO: handle this.
+                return null;
+            },
             'Microsoft\PhpParser\Node\Expression\ExitIntrinsicExpression' => function(PhpParser\Node\Expression\ExitIntrinsicExpression $n, int $start_line) {
                 return new ast\Node(ast\AST_EXIT, 0, ['expr' => self::phpParserNodeToAstNode($n->expression)], $start_line);
             },
@@ -1728,6 +1734,9 @@ Node\SourceFileNode
         $node->flags = 0;
         $ast_args = [];
         foreach ($args->children ?? [] as $arg) {
+            if ($arg instanceof Token && $arg->kind === TokenKind::CommaToken) {
+                continue;
+            }
             $ast_args[] = self::phpParserNodeToAstNode($arg);
         }
         $node->lineno = $ast_args[0]->lineno ?? $line;
