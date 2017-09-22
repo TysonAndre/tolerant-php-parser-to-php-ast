@@ -183,6 +183,15 @@ final class TolerantASTConverter {
             } else {
                 $parser_nodes = [$parser_nodes];
             }
+        } else if ($parser_nodes instanceof Token) {
+            if ($parser_nodes->kind === TokenKind::SemicolonToken) {
+                return new ast\Node(
+                    ast\AST_STMT_LIST,
+                    0,
+                    [],
+                    $lineno ?? 0
+                );
+            }
         }
         if (!is_array($parser_nodes)) {
             throw new \RuntimeException("Unexpected type for statements: " . self::debugDumpNodeOrToken($parser_nodes));
@@ -702,17 +711,17 @@ final class TolerantASTConverter {
                 }
                 return new ast\Node($kind, 0, ['depth' => isset($n->breakoutLevel) ? (int)self::tokenToString($n->breakoutLevel) : null], $start_line);
             },
-            /*
             'Microsoft\PhpParser\Node\CatchClause' => function(PhpParser\Node\CatchClause $n, int $start_line) : ast\Node {
+                $catch_node = self::phpParserNodeToAstNode($n->qualifiedName);
+                $catch_list_node = new ast\Node(ast\AST_NAME_LIST, 0, [$catch_node], $catch_node->lineno);
                 // TODO: Change after https://github.com/Microsoft/tolerant-php-parser/issues/103 is supported
                 return self::astStmtCatch(
-                    self::phpParserNameListToAstNameList($n->qualifiedName, $start_line),
-                    $n->var,
-                    self::phpParserStmtlistToAstNode($n->compoundstatement->statements, $start_line),
+                    $catch_list_node,
+                    self::variableTokenToString($n->variableName),
+                    self::phpParserStmtlistToAstNode($n->compoundStatement, $start_line),
                     $start_line
                 );
             },
-             */
             'Microsoft\PhpParser\Node\Statement\ClassDeclaration' => function(PhpParser\Node\Statement\ClassDeclaration $n, int $start_line) : ast\Node {
                 $end_line = self::getEndLine($n) ?: $start_line;
                 return self::astStmtClass(
@@ -750,7 +759,7 @@ final class TolerantASTConverter {
                     [
                         'params' => self::phpParserParamsToAstParams($n->parameters, $start_line),
                         'uses' => null,  // TODO: anonymous class?
-                        'stmts' => ($statements instanceof PhpParser\Node\Statement\CompoundStatementNode) ? self::phpParserStmtlistToAstNode($statements->statements, $start_line) : null,
+                        'stmts' => self::phpParserStmtlistToAstNode($statements, $start_line),
                         'returnType' => self::phpParserTypeToAstNode($n->returnType, self::getEndLine($n->returnType) ?: $start_line)
                     ],
                     $start_line,
@@ -1107,17 +1116,17 @@ Node\SourceFileNode
     }
 
     // FIXME types
-    private static function astStmtCatch($types, string $var, $stmts, int $lineno) : ast\Node {
-        $node = new ast\Node();
-        $node->kind = ast\AST_CATCH;
-        $node->lineno = $lineno;
-        $node->flags = 0;
-        $node->children = [
-            'class' => $types,
-            'var' => new ast\Node(ast\AST_VAR, 0, ['name' => $var], end($types->children)->lineno),  // FIXME AST_VAR
-            'stmts' => $stmts,
-        ];
-        return $node;
+    private static function astStmtCatch(ast\Node $types, string $var, $stmts, int $lineno) : ast\Node {
+        return new ast\Node(
+            ast\AST_CATCH,
+            0,
+            [
+                'class' => $types,
+                'var' => new ast\Node(ast\AST_VAR, 0, ['name' => $var], $lineno),  // FIXME AST_VAR
+                'stmts' => $stmts,
+            ],
+            $lineno
+        );
     }
 
     private static function phpParserCatchlistToAstCatchlist(array $catches, int $lineno) : ast\Node {
