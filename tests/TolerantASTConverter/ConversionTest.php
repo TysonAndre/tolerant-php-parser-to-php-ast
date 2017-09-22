@@ -76,14 +76,12 @@ class ConversionTest extends \PHPUnit\Framework\TestCase {
             throw new RuntimeException("None of version 40, 45 or 50 are natively supported");
         }
         foreach ($paths as $path) {
-            /*
             if ($supports40) {
                 $tests[] = [$path, 40];
             }
             if ($supports45) {
                 $tests[] = [$path, 45];
             }
-             */
             if ($supports50) {
                 $tests[] = [$path, 50];
             }
