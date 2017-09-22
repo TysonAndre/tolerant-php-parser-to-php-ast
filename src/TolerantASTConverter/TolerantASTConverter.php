@@ -277,6 +277,19 @@ final class TolerantASTConverter {
         return $callback($n, self::getStartLine($n));
     }
 
+    /**
+     * @param PhpParser\Node|Token $n - The node from PHP-Parser
+     * @return ast\Node|ast\Node[]|string|int|float|bool|null - whatever ast\parse_code would return as the equivalent.
+     * @suppress PhanUndeclaredProperty
+     */
+    private static final function phpParserValueNodeToAstNode($n) {
+        $result = self::phpParserNodeToAstNode($n);
+        if (($result instanceof ast\Node) && $result->kind === ast\AST_NAME) {
+            return new ast\Node(ast\AST_CONST, 0, ['name' => $result], $result->lineno);
+        }
+        return $result;
+    }
+
     private static function getStartLine($n) : int {
         if (!$n) {
             return 0;
@@ -617,7 +630,7 @@ final class TolerantASTConverter {
                 }
                 $array_element = $n->arrayElement;
                 $element_value = $array_element->elementValue;
-                $ast_expr = ($element_value !== null && !($element_value instanceof MissingToken)) ? self::phpParserNodeToAstNode($array_element->elementValue) : null;
+                $ast_expr = ($element_value !== null && !($element_value instanceof MissingToken)) ? self::phpParserValueNodeToAstNode($array_element->elementValue) : null;
                 if ($kind === \ast\AST_YIELD) {
                     $children = [
                         'value' => $ast_expr,
@@ -815,7 +828,7 @@ final class TolerantASTConverter {
                     ast\AST_FOREACH,
                     0,
                     [
-                        'expr' => self::phpParserNodeToAstNode($n->forEachCollectionName),
+                        'expr' => self::phpParserValueNodeToAstNode($n->forEachCollectionName),
                         'value' => $value,
                         'key' => $n->foreachKey !== null ? self::phpParserNodeToAstNode($n->foreachKey) : null,
                         'stmts' => self::phpParserStmtlistToAstNode($n->statements, $start_line),
@@ -1315,13 +1328,12 @@ Node\SourceFileNode
     }
 
     private static function astNodeNullableType(ast\Node $type, int $line) {
-        $node = new ast\Node;
-        $node->kind = ast\AST_NULLABLE_TYPE;
-        // FIXME: Why is this a special case in php-ast? (e.g. nullable int has no flags on the nullable node)
-        $node->flags = 0;
-        $node->lineno = $line;
-        $node->children = ['type' => $type];
-        return $node;
+        return new ast\Node(
+            ast\AST_NULLABLE_TYPE,
+            0,
+            ['type' => $type],
+            $line
+        );
     }
 
     private static function astNodeName(PhpParser\Node\QualifiedName $name, int $line) : ast\Node {
@@ -1765,13 +1777,13 @@ Node\SourceFileNode
 
         $start_line = self::getStartLine($n);
 
-        return self::newAstNode(ast\AST_CONST_ELEM, 0, $children, $start_line, self::extractPhpdocComment($n) ?? $doc_comment);
+        return self::newAstNode(ast\AST_PROP_ELEM, 0, $children, $start_line, self::extractPhpdocComment($n) ?? $doc_comment);
     }
 
     private static function phpParserConstelemToAstConstelem(PhpParser\Node\ConstElement $n, ?string $doc_comment) : ast\Node{
         $children = [
             'name' => self::variableTokenToString($n->name),
-            'value' => self::phpParserNodeToAstNode($n->assignment),
+            'value' => self::phpParserValueNodeToAstNode($n->assignment),
         ];
 
         $start_line = self::getStartLine($n);
@@ -1957,6 +1969,8 @@ Node\SourceFileNode
                 }
                 $prev_was_element = false;
                 continue;
+            } else {
+                $prev_was_element = true;
             }
             assert($item instanceof PhpParser\Node\ArrayElement);
             $ast_items[] = new ast\Node(ast\AST_ARRAY_ELEM, 0, [
@@ -1976,8 +1990,8 @@ Node\SourceFileNode
             assert($item instanceof PhpParser\Node\ArrayElement);
             $flags = $item->byRef ? ast\flags\PARAM_REF : 0;
             $ast_items[] = new ast\Node(ast\AST_ARRAY_ELEM, $flags, [
-                'value' => self::phpParserNodeToAstNode($item->elementValue),
-                'key' => $item->elementKey !== null ? self::phpParserNodeToAstNode($item->elementKey) : null,
+                'value' => self::phpParserValueNodeToAstNode($item->elementValue),
+                'key' => $item->elementKey !== null ? self::phpParserValueNodeToAstNode($item->elementKey) : null,
             ], self::getStartLine($item));
         }
         if (PHP_VERSION_ID < 70100) {
