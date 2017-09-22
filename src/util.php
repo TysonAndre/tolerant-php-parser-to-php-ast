@@ -201,9 +201,15 @@ function ast_dump($ast, int $options = 0) : string {
         return $result;
     } else if ($ast === null) {
         return 'null';
-    } else if (is_string($ast)) {
-        return "\"$ast\"";
+    } else if (\is_scalar($ast)) {
+        return \var_export($ast, true);
     } else {
-        return (string) $ast;
+        ob_start();
+        try {
+            \var_dump($ast);
+        } finally {
+            $repr = ob_get_clean();
+        };
+        return "INVALID_TYPE: " . $repr;
     }
 }
