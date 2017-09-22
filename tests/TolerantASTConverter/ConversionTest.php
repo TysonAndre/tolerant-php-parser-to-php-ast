@@ -46,17 +46,33 @@ class ConversionTest extends \PHPUnit\Framework\TestCase {
     }
 
     /**
+     * @param string[] $files
+     * @return void
+     */
+    private static function sortByTokenCount(array &$files) {
+        $token_counts = [];
+        foreach ($files as $file) {
+            $token_counts[$file] = count(token_get_all(file_get_contents($file)));
+        }
+        usort($files, function(string $path1, string $path2) use ($token_counts) {
+            return $token_counts[$path1] <=> $token_counts[$path2];
+        });
+    }
+
+    /**
      * @return string[]|int[] [string $file_path, int $ast_version]
+     * @suppress PhanPluginUnusedVariable
      */
     public function astValidFileExampleProvider() {
         $tests = [];
         $source_dir = dirname(dirname(realpath(__DIR__))) . '/test_files/src';
         $paths = $this->_scanSourceDirForPHP($source_dir);
-        sort($paths);
+
+        self::sortByTokenCount($paths);
         $supports40 = self::hasNativeASTSupport(40);
         $supports45 = self::hasNativeASTSupport(45);
         $supports50 = self::hasNativeASTSupport(50);
-        if (!($supports40 || $supports50)) {
+        if (!($supports40 || $supports45 || $supports50)) {
             throw new RuntimeException("None of version 40, 45 or 50 are natively supported");
         }
         foreach ($paths as $path) {
