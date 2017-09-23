@@ -366,9 +366,13 @@ final class TolerantASTConverter {
             'Microsoft\PhpParser\Node\SourceFileNode' => function(PhpParser\Node\SourceFileNode $n, int $start_line) : ?\ast\Node {
                 return self::phpParserStmtlistToAstNode($n->statementList, $start_line, false);
             },
-            'Microsoft\PhpParser\Node\Expression\ArgumentExpression' => function(PhpParser\Node\Expression\ArgumentExpression $n, int $_) {
+            'Microsoft\PhpParser\Node\Expression\ArgumentExpression' => function(PhpParser\Node\Expression\ArgumentExpression $n, int $start_line) {
                 // FIXME support foo(...$args)
-                return self::phpParserNodeToAstNode($n->expression/*, $n->dotDotdotToken */);
+                $result = self::phpParserNodeToAstNode($n->expression);
+                if ($n->dotDotDotToken !== null) {
+                    return new ast\Node(ast\AST_UNPACK, 0, ['expr' => $result], $start_line);
+                }
+                return $result;
             },
             'Microsoft\PhpParser\Node\Expression\SubscriptExpression' => function(PhpParser\Node\Expression\SubscriptExpression $n, int $start_line) : ast\Node {
                 return new ast\Node(ast\AST_DIM, 0, [
@@ -905,7 +909,7 @@ Node\SourceFileNode
                 return self::astStmtClass(
                     ast\flags\CLASS_INTERFACE,
                     self::tokenToString($n->name),
-                    null,
+                    self::interfaceBaseClauseToNode($n->interfaceBaseClause),
                     null,
                     self::phpParserStmtlistToAstNode($n->interfaceMembers->interfaceMemberDeclarations ?? [], $start_line, false),
                     $start_line,
@@ -1528,6 +1532,8 @@ Node\SourceFileNode
         }
         if ($name->globalSpecifier !== null) {
             $ast_kind = ast\flags\NAME_FQ;
+        } else if (($name->relativeSpecifier->namespaceKeyword ?? null) !== null) {
+            $ast_kind = ast\flags\NAME_RELATIVE;
         } else {
             $ast_kind = ast\flags\NAME_NOT_FQ;
         }
@@ -1666,6 +1672,25 @@ Node\SourceFileNode
     }
 
     /**
+     * @param ?PhpParser\Node\InterfaceBaseClause $node
+     */
+    private static function interfaceBaseClauseToNode($node) : ?\ast\Node {
+        if (!$node instanceof PhpParser\Node\InterfaceBaseClause) {
+            // TODO: real placeholder?
+            return null;
+        }
+
+        $interface_extends_name_list = [];
+        foreach ($node->interfaceNameList->children ?? [] as $implement) {
+            if ($implement instanceof Token && $implement->kind === TokenKind::CommaToken) {
+                continue;
+            }
+            $interface_extends_name_list[] = self::phpParserNodeToAstNode($implement);
+        }
+        return new ast\Node(ast\AST_NAME_LIST, 0, $interface_extends_name_list, $interface_extends_name_list[0]->lineno);
+    }
+
+    /**
      * @param int $flags
      * @param ?string $name
      * @param ?ast\Node $extends
@@ -1689,23 +1714,31 @@ Node\SourceFileNode
             $flags |= ast\flags\CLASS_ANONYMOUS;
         }
 
-        if ($implements !== null) {
-            $ast_implements_inner = [];
-            foreach ($implements->interfaceNameList->children ?? [] as $implement) {
-                if ($implement instanceof Token && $implement->kind === TokenKind::CommaToken) {
-                    continue;
-                }
-                $ast_implements_inner[] = self::phpParserNodeToAstNode($implement);
-            }
-            $ast_implements = new ast\Node(ast\AST_NAME_LIST, 0, $ast_implements_inner, $ast_implements_inner[0]->lineno);
+        if (($flags & ast\flags\CLASS_INTERFACE) > 0) {
+            $children = [
+                'extends'    => null,
+                'implements' => $extends,
+                'stmts'      => $stmts,
+            ];
         } else {
-            $ast_implements = null;
+            if ($implements !== null) {
+                $ast_implements_inner = [];
+                foreach ($implements->interfaceNameList->children ?? [] as $implement) {
+                    if ($implement instanceof Token && $implement->kind === TokenKind::CommaToken) {
+                        continue;
+                    }
+                    $ast_implements_inner[] = self::phpParserNodeToAstNode($implement);
+                }
+                $ast_implements = new ast\Node(ast\AST_NAME_LIST, 0, $ast_implements_inner, $ast_implements_inner[0]->lineno);
+            } else {
+                $ast_implements = null;
+            }
+            $children = [
+                'extends'    => $extends,
+                'implements' => $ast_implements,
+                'stmts'      => $stmts,
+            ];
         }
-        $children = [
-            'extends'    => $extends,
-            'implements' => $ast_implements,
-            'stmts'      => $stmts,
-        ];
 
         return self::newAstDecl(
             ast\AST_CLASS,
