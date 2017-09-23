@@ -87,21 +87,29 @@ class NodeDumper {
      */
     public function dumpTreeAsString($ast_node, string $key = '', string $padding = '') : string {
         if ($ast_node instanceof Node) {
-            $offset = $ast_node->getStart();
-            $result = [$padding . ($key !== '' ? $key . ': ' : '') . $this->dumpClassName($ast_node) . ($this->include_offset ? " (@" . $offset . ")" : "") . "\n"];
+            $first_part = \sprintf(
+                "%s%s%s%s\n",
+                $padding,
+                $key !== '' ? $key . ': ' : '',
+                $this->dumpClassName($ast_node),
+                $this->include_offset ? ' (@' . $ast_node->getStart() . ')' : ''
+            );
+
+            $result = [$first_part];
             foreach ($ast_node->getChildNodesAndTokens() as $name => $child) {
                 $result[] = $this->dumpTreeAsString($child, $name, $padding . $this->indent);
             }
             return \implode('', $result);
         } else if ($ast_node instanceof Token) {
             return \sprintf(
-                "%s%s%s: %s%s: %s\n",
+                "%s%s%s: %s%s%s: %s\n",
                 $padding,
                 $key !== '' ? $key . ': ' : '',
                 $this->dumpTokenClassName($ast_node),
                 $ast_node->getTokenKindNameFromValue($ast_node->kind),
                 $this->include_token_kind ? '(' . $ast_node->kind . ')' : '',
-                \json_encode(substr($this->file_contents, $ast_node->fullStart, $ast_node->length))
+                $this->include_offset ? ' (@' . $ast_node->start . ')' : '',
+                \json_encode(\substr($this->file_contents, $ast_node->fullStart, $ast_node->length))
             );
         } else if (\is_scalar($ast_node) || $ast_node === null) {
             return \var_export($ast_node, true);

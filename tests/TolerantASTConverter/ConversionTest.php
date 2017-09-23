@@ -155,6 +155,7 @@ class ConversionTest extends \PHPUnit\Framework\TestCase {
         if ($fallback_ast_repr !== $original_ast_repr) {
             $node_dumper = new NodeDumper($contents);
             $node_dumper->setIncludeTokenKind(true);
+            $node_dumper->setIncludeOffset(true);
             $php_parser_node = $converter->phpparserParse($contents);
             try {
                 $dump = $node_dumper->dumpTreeAsString($php_parser_node);

@@ -61,6 +61,11 @@ EOB;
     dump_expr($expr);
 }
 
+function dump_expr_as_ast(string $expr) {
+    require_once __DIR__ . '/src/util.php';
+    $ast_data = (new \TolerantASTConverter\TolerantASTConverter())->parseCodeAsPHPAST($expr, 50);
+    echo ast_dump($ast_data, AST_DUMP_LINENOS);
+}
 function dump_expr(string $expr) {
     // Instantiate new parser instance
     $parser = new Parser();
@@ -77,5 +82,4 @@ function dump_expr(string $expr) {
     $dumper->setIncludeTokenKind(true);
     $dumper->dumpTree($ast_node);
     // var_export($ast_node->statementList);
-    echo "\n";
 }
