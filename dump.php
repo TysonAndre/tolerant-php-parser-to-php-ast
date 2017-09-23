@@ -81,5 +81,6 @@ function dump_expr(string $expr) {
     $dumper = new NodeDumper($expr);
     $dumper->setIncludeTokenKind(true);
     $dumper->dumpTree($ast_node);
+    echo "\n";
     // var_export($ast_node->statementList);
 }
