@@ -160,12 +160,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/phan/phan.git",
-                "reference": "5e37999d002ab85f74e810bd1849b3a643449dc5"
+                "reference": "1e091c9379ddf2da49ece7168aa01147cca8e22b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phan/phan/zipball/5e37999d002ab85f74e810bd1849b3a643449dc5",
-                "reference": "5e37999d002ab85f74e810bd1849b3a643449dc5",
+                "url": "https://api.github.com/repos/phan/phan/zipball/1e091c9379ddf2da49ece7168aa01147cca8e22b",
+                "reference": "1e091c9379ddf2da49ece7168aa01147cca8e22b",
                 "shasum": ""
             },
             "require": {
@@ -209,7 +209,7 @@
                 "php",
                 "static"
             ],
-            "time": "2017-09-18T06:15:41+00:00"
+            "time": "2017-09-23T20:51:30+00:00"
         },
         {
             "name": "myclabs/deep-copy",
