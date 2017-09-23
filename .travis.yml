@@ -16,6 +16,7 @@ install:
   - composer --prefer-dist install
 
 script:
+  - ./vendor/bin/phan
   - ./test
 
 branches:
