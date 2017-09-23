@@ -10,6 +10,7 @@ cache:
 before_install:
   - ./tests/setup.sh
 
+# TODO: reintroduce composer validate after phan 0.10.0 is released
 install:
   - composer --prefer-dist install
 
