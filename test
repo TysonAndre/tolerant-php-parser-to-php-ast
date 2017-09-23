@@ -1,0 +1,6 @@
+#!/bin/sh
+if php -m | grep '^ast'; then
+	vendor/bin/phpunit tests
+else
+	php -d extension=ast.so vendor/bin/phpunit tests
+fi
