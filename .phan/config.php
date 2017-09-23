@@ -231,5 +231,6 @@ return [
         'vendor/etsy/phan/.phan/plugins/AlwaysReturnPlugin.php',
         'vendor/etsy/phan/.phan/plugins/DollarDollarPlugin.php',
         'vendor/etsy/phan/.phan/plugins/DuplicateArrayKeyPlugin.php',
+        'vendor/etsy/phan/.phan/plugins/UnreachableCodePlugin.php',
     ], file_exists(__DIR__ . '/plugins/UnusedVariablePlugin.php') ? [__DIR__ . '/plugins/UnusedVariablePlugin.php'] : []),
 ];
