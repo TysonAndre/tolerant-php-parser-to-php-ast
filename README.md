@@ -3,9 +3,9 @@ Tolerant-PHP-Parser to php-ast
 
 [![Build Status](https://travis-ci.org/TysonAndre/tolerant-php-parser-to-php-ast.svg?branch=master)](https://travis-ci.org/TysonAndre/tolerant-php-parser-to-php-ast)
 
-convert from Microsoft\PHPParser\Node to ast\Node: https://github.com/Microsoft/tolerant-php-parser/issues/113
+This project uses Microsoft/tolerant-php-parser to generate a tree with error tolerance, then converts from that tree to ast\Node: https://github.com/Microsoft/tolerant-php-parser/issues/113
 
-Most tests are failing
+This is 90% done. Current test cases pass, but some cases aren't yet tested.
 
 - Still being ported from https://github.com/TysonAndre/php-parser-to-php-ast
 - The test suite is not yet comprehensive, may need to handle tokens
@@ -17,8 +17,6 @@ Most tests are failing
 
 Usage
 -----
-
-**Need to fix tests first**
 
 Using it as a slow substitute for php-ast
 
@@ -34,11 +32,12 @@ Using it as an error-tolerant substitute for php-ast (e.g. for use in IDEs)
 Running unit tests
 ------------------
 
-To run unit tests, you must install [nikic/php-ast](https://github.com/nikic/php-ast) 0.1.5+ (for the expected results to be created)
+To run unit tests, you must install [nikic/php-ast](https://github.com/nikic/php-ast) 0.1.5+ (for the expected results to be created).
+You must also run `composer install` if you haven't already done so.
 
 - Then run `vendor/bin/phpunit`
 
 Possible Future Enhancements
 ----------------------------
 
-- 
+- Adding a mode to never accept invalid PHP (for completeness)
