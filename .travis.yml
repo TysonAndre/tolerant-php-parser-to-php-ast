@@ -17,3 +17,7 @@ install:
 
 script:
   - ./test
+
+branches:
+  only:
+  - master
