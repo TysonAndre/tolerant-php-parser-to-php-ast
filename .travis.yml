@@ -13,7 +13,7 @@ before_install:
 
 # TODO: reintroduce composer validate after phan 0.10.0 is released
 install:
-  - composer --prefer-dist install
+  - composer install
 
 script:
   - ./vendor/bin/phan
