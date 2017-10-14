@@ -28,7 +28,7 @@ class ConversionTest extends \PHPUnit\Framework\TestCase {
             }
         }
         if (count($files) === 0) {
-            throw new \InvalidArgumentException(sprintf("No files in %s: RecursiveDirectoryIterator iteration returned %s\n", $files, $source_dir));
+            throw new \InvalidArgumentException(sprintf("RecursiveDirectoryIterator iteration returned no files for %s\n", $source_dir));
         }
         return $files;
     }

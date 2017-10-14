@@ -899,6 +899,9 @@ final class TolerantASTConverter {
             'Microsoft\PhpParser\Node\Statement\ExpressionStatement' => function(PhpParser\Node\Statement\ExpressionStatement $n, int $_) {
                 return self::phpParserNodeToAstNode($n->expression);
             },
+            /**
+             * @suppress PhanTypeMismatchArgument incorrect phpdoc for breakoutLevel
+             */
             'Microsoft\PhpParser\Node\Statement\BreakOrContinueStatement' => function(PhpParser\Node\Statement\BreakOrContinueStatement $n, int $start_line) : ast\Node {
                 switch ($n->breakOrContinueKeyword->kind) {
                 case TokenKind::BreakKeyword:
@@ -2409,8 +2412,8 @@ Node\SourceFileNode
     ];
 
     // FIXME don't use in places expecting non-strings.
-    /** @return string|Node */
-    private static function tokenToString(Token $n) {
+    /** @return string */
+    private static function tokenToString(Token $n) : string {
         $result = \trim($n->getText(self::$file_contents));
         $kind = $n->kind;
         if ($kind === TokenKind::VariableName) {
