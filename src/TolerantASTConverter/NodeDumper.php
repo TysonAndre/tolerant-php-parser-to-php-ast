@@ -8,6 +8,8 @@ use Microsoft\PhpParser\Token;
 use Microsoft\PhpParser\Parser;
 
 /**
+ * Source: https://github.com/TysonAndre/tolerant-php-parser-to-php-ast
+ *
  * The MIT License (MIT)
  *
  * Copyright (c) 2017 Tyson Andre
@@ -30,7 +32,6 @@ use Microsoft\PhpParser\Parser;
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 class NodeDumper {
     /** @var string */
     private $file_contents;
@@ -42,7 +43,8 @@ class NodeDumper {
     private $indent;
 
     // TODO: Pass an options array instead, or add setters?
-    public function __construct(string $file_contents, bool $include_offset = false, bool $include_token_kind = false, string $indent = '    ') {
+    public function __construct(string $file_contents, bool $include_offset = false, bool $include_token_kind = false, string $indent = '    ')
+    {
         $this->file_contents = $file_contents;
         $this->include_offset = $include_offset;
         $this->include_token_kind = $include_token_kind;
@@ -50,23 +52,27 @@ class NodeDumper {
     }
 
     /** @return void */
-    public function setIncludeOffset(bool $include_offset) {
+    public function setIncludeOffset(bool $include_offset)
+    {
         $this->include_offset = $include_offset;
     }
 
     /** @return void */
-    public function setIncludeTokenKind(bool $include_token_kind) {
+    public function setIncludeTokenKind(bool $include_token_kind)
+    {
         $this->include_token_kind = $include_token_kind;
     }
 
     /** @return void */
-    public function setIndent(string $indent) {
+    public function setIndent(string $indent)
+    {
         $this->indent = $indent;
     }
 
     public function dumpClassName(Node $ast_node) : string {
         $name = get_class($ast_node);
-        if (stripos($name, 'Microsoft\\PhpParser\\') === 0) {
+        if (stripos($name, 'Microsoft\\PhpParser\\') === 0)
+        {
             $name = substr($name, 20);
         }
         return $name;
@@ -124,7 +130,8 @@ class NodeDumper {
      * @param string $padding (to be echoed before the current node
      * @return void
      */
-    public function dumpTree($ast_node, string $key = '', string $padding = '') {
+    public function dumpTree($ast_node, string $key = '', string $padding = '')
+    {
         echo $this->dumpTreeAsString($ast_node, $key, $padding);
     }
 }

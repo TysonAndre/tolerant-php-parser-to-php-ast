@@ -11,8 +11,8 @@ use Microsoft\PhpParser\Token;
  * Source: https://github.com/TysonAndre/tolerant-php-parser-to-php-ast
  * Uses Microsoft/tolerant-php-parser to create an instance of ast\Node.
  * Useful if the php-ast extension isn't actually installed.
+ *
  * @author Tyson Andre
- * TODO: Don't need to pass in $start_line for many of these functions
  */
 class FilePositionMap {
     /** @var string */
@@ -30,7 +30,8 @@ class FilePositionMap {
     /** @var int[] */
     private $offset_to_line_map = [];
 
-    public function __construct(string $file_contents, Node $source_node) {
+    public function __construct(string $file_contents, Node $source_node)
+    {
         $this->file_contents = $file_contents;
         $this->file_contents_length = \strlen($file_contents);
         $this->current_offset = 0;
@@ -38,7 +39,8 @@ class FilePositionMap {
         $this->init($source_node);
     }
 
-    private function init(Node $source_node) {
+    private function init(Node $source_node)
+    {
         $offsets_set = [];
         foreach ($source_node->getDescendantNodesAndTokens() as $child) {
             if ($child instanceof Node) {
@@ -63,16 +65,19 @@ class FilePositionMap {
 
     // TODO update if https://github.com/Microsoft/tolerant-php-parser/issues/166
     // Add an alias?
-    public function getNodeStartLine(Node $node) : int {
+    public function getNodeStartLine(Node $node) : int
+    {
         return $this->fetchLineNumberForOffset($node->getStart());
     }
 
-    public function getTokenStartLine(Token $token) : int {
+    public function getTokenStartLine(Token $token) : int
+    {
         return $this->fetchLineNumberForOffset($token->start);
     }
 
     /** @param Node|Token $node */
-    public function getStartLine($node) : int {
+    public function getStartLine($node) : int
+    {
         if ($node instanceof Token) {
             $offset = $node->start;
         } else {
@@ -82,11 +87,13 @@ class FilePositionMap {
     }
 
     /** @param Node|Token $node */
-    public function getEndLine($node) : int {
+    public function getEndLine($node) : int
+    {
         return $this->fetchLineNumberForOffset($node->getEndPosition());
     }
 
-    public function fetchLineNumberForOffset(int $offset) : int {
+    public function fetchLineNumberForOffset(int $offset) : int
+    {
         $line = $this->offset_to_line_map[$offset] ?? null;
         if ($line !== null) {
             return $line;
@@ -96,7 +103,8 @@ class FilePositionMap {
         return $line;
     }
 
-    private function computeLineNumberForOffset(int $offset) : int {
+    private function computeLineNumberForOffset(int $offset) : int
+    {
         if ($offset < 0) {
             $offset = 0;
         } else if ($offset >= $this->file_contents_length) {
