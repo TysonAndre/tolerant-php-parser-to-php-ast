@@ -112,7 +112,7 @@ final class TolerantASTConverter {
 
     public function parseCodeAsPHPAST(string $file_contents, int $version, array &$errors = null) {
         if (!\in_array($version, self::SUPPORTED_AST_VERSIONS)) {
-            throw new \InvalidArgumentException(sprintf("Unexpected version: want %d, got %d", implode(', ', self::SUPPORTED_AST_VERSIONS), $version));
+            throw new \InvalidArgumentException(sprintf("Unexpected version: want %s, got %d", \implode(', ', self::SUPPORTED_AST_VERSIONS), $version));
         }
         // Aside: this can be implemented as a stub.
         $parser_node = self::phpParserParse($file_contents, $errors);
@@ -505,7 +505,6 @@ final class TolerantASTConverter {
                     TokenKind::IntCastToken     => ast\flags\TYPE_LONG,
                     TokenKind::ObjectCastToken  => ast\flags\TYPE_OBJECT,
                     TokenKind::StringCastToken  => ast\flags\TYPE_STRING,
-                    TokenKind::DoubleCastToken  => ast\flags\TYPE_DOUBLE,
                     TokenKind::UnsetCastToken   => ast\flags\TYPE_NULL,
                 ];
                 $kind = $n->castType->kind;

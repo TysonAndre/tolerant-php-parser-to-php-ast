@@ -228,9 +228,12 @@ return [
 
     // A list of plugin files to execute
     'plugins' => array_merge([
-        'vendor/phan/phan/.phan/plugins/AlwaysReturnPlugin.php',
-        'vendor/phan/phan/.phan/plugins/DollarDollarPlugin.php',
-        'vendor/phan/phan/.phan/plugins/DuplicateArrayKeyPlugin.php',
-        'vendor/phan/phan/.phan/plugins/UnreachableCodePlugin.php',
+        'AlwaysReturnPlugin',
+        'DollarDollarPlugin',
+        'UnreachableCodePlugin',
+        // NOTE: src/Phan/Language/Internal/FunctionSignatureMap.php mixes value without keys (as return type) with values having keys deliberately.
+        'DuplicateArrayKeyPlugin',
+        'PregRegexCheckerPlugin',
+        'PrintfCheckerPlugin',
     ], file_exists(__DIR__ . '/plugins/UnusedVariablePlugin.php') ? [__DIR__ . '/plugins/UnusedVariablePlugin.php'] : []),
 ];
