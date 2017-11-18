@@ -21,6 +21,7 @@ if (!class_exists('\ast\Node')) {
 
 /**
  * Source: https://github.com/TysonAndre/tolerant-php-parser-to-php-ast
+ *
  * Uses Microsoft/tolerant-php-parser to create an instance of ast\Node.
  * Useful if the php-ast extension isn't actually installed.
  * @author Tyson Andre

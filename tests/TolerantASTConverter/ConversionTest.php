@@ -11,11 +11,12 @@ use RuntimeException;
 
 use ast;
 
-
 require_once __DIR__ . '/../../src/util.php';
 
-class ConversionTest extends \PHPUnit\Framework\TestCase {
-    protected function _scanSourceDirForPHP(string $source_dir) : array {
+class ConversionTest extends \PHPUnit\Framework\TestCase
+{
+    protected function _scanSourceDirForPHP(string $source_dir) : array
+    {
         $files = [];
         foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($source_dir)) as $file_path => $file_info) {
             $filename = $file_info->getFilename();
@@ -36,7 +37,8 @@ class ConversionTest extends \PHPUnit\Framework\TestCase {
     /**
      * @return bool
      */
-    public static function hasNativeASTSupport(int $ast_version) {
+    public static function hasNativeASTSupport(int $ast_version)
+    {
         try {
             ast\parse_code('', $ast_version);
             return true;
@@ -49,12 +51,13 @@ class ConversionTest extends \PHPUnit\Framework\TestCase {
      * @param string[] $files
      * @return void
      */
-    private static function sortByTokenCount(array &$files) {
+    private static function sortByTokenCount(array &$files)
+    {
         $token_counts = [];
         foreach ($files as $file) {
             $token_counts[$file] = count(token_get_all(file_get_contents($file)));
         }
-        usort($files, function(string $path1, string $path2) use ($token_counts) {
+        usort($files, function (string $path1, string $path2) use ($token_counts) {
             return $token_counts[$path1] <=> $token_counts[$path2];
         });
     }
@@ -63,7 +66,8 @@ class ConversionTest extends \PHPUnit\Framework\TestCase {
      * @return string[]|int[] [string $file_path, int $ast_version]
      * @suppress PhanPluginUnusedVariable
      */
-    public function astValidFileExampleProvider() {
+    public function astValidFileExampleProvider()
+    {
         $tests = [];
         $source_dir = dirname(dirname(realpath(__DIR__))) . '/test_files/src';
         $paths = $this->_scanSourceDirForPHP($source_dir);
@@ -90,7 +94,8 @@ class ConversionTest extends \PHPUnit\Framework\TestCase {
     }
 
     /** @return void */
-    private static function normalizeOriginalAST($node) {
+    private static function normalizeOriginalAST($node)
+    {
         if ($node instanceof ast\Node) {
             $kind = $node->kind;
             if ($kind === ast\AST_FUNC_DECL || $kind === ast\AST_METHOD) {
@@ -101,7 +106,7 @@ class ConversionTest extends \PHPUnit\Framework\TestCase {
                 self::normalizeOriginalAST($c);
             }
             return;
-        } else if (\is_array($node)) {
+        } elseif (\is_array($node)) {
             foreach ($node as $c) {
                 self::normalizeOriginalAST($c);
             }
@@ -110,7 +115,8 @@ class ConversionTest extends \PHPUnit\Framework\TestCase {
 
     // TODO: TolerantPHPParser gets more information than PHP-Parser for statement lists,
     // so this step may be unnecessary
-    public static function normalizeLineNumbers(ast\Node $node) : ast\Node {
+    public static function normalizeLineNumbers(ast\Node $node) : ast\Node
+    {
         $node = clone($node);
         if (is_array($node->children)) {
             foreach ($node->children as $k => $v) {
@@ -124,7 +130,8 @@ class ConversionTest extends \PHPUnit\Framework\TestCase {
     }
 
     /** @dataProvider astValidFileExampleProvider */
-    public function testFallbackFromParser(string $file_name, int $ast_version) {
+    public function testFallbackFromParser(string $file_name, int $ast_version)
+    {
         $test_folder_name = basename(dirname($file_name));
         if (PHP_VERSION_ID < 70100 && $test_folder_name === 'php71_or_newer') {
             $this->markTestIncomplete('php-ast cannot parse php7.1 syntax when running in php7.0');
@@ -165,11 +172,11 @@ class ConversionTest extends \PHPUnit\Framework\TestCase {
             $original_ast_dump = \ast_dump($ast, AST_DUMP_LINENOS);
             try {
                 $fallback_ast_dump = \ast_dump($fallback_ast, AST_DUMP_LINENOS);
-            } catch(\Throwable $e) {
+            } catch (\Throwable $e) {
                 $fallback_ast_dump = 'could not dump php-ast Node: ' . get_class($e) . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString();
             }
             // $parser_export = var_dump($php_parser_node, true);
-            $this->assertSame($original_ast_repr, $fallback_ast_repr,  <<<EOT
+            $this->assertSame($original_ast_repr, $fallback_ast_repr, <<<EOT
 The fallback must return the same tree of php-ast nodes
 File: $file_name
 Code:
@@ -187,8 +194,7 @@ EOT
             /*
 PHP-Parser(unsimplified):
 $parser_export
-             */
-);
+             */);
         }
     }
 }
