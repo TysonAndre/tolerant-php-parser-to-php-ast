@@ -2233,11 +2233,11 @@ Node\SourceFileNode
         ];
         $doc_comment = self::extractPhpdocComment($declare) ?? $first_doc_comment;
         // $first_doc_comment = null;
-        if (self::$ast_version >= 50) {
+        if (self::$ast_version >= 50 && PHP_VERSION_ID >= 70100) {
             $children['docComment'] = $doc_comment;
         }
         $node = new ast\Node(ast\AST_CONST_ELEM, 0, $children, self::getStartLine($declare));
-        if (self::$ast_version < 50 && is_string($doc_comment)) {
+        if (self::$ast_version < 50 && is_string($doc_comment) && PHP_VERSION_ID >= 70100) {
             $node->docComment = $doc_comment;
         }
         $ast_declare_elements[] = $node;
@@ -2337,6 +2337,9 @@ Node\SourceFileNode
                 'value' => self::phpParserNodeToAstNode($item->elementValue),
                 'key' => $item->elementKey !== null ? self::phpParserNodeToAstNode($item->elementKey) : null,
             ], self::getStartLine($item));
+        }
+        if (PHP_VERSION_ID < 70100 && \count($ast_items) === 0) {
+            $ast_items[] = null;
         }
         return new ast\Node(ast\AST_ARRAY, ast\flags\ARRAY_SYNTAX_LIST, $ast_items, $start_line);
     }
