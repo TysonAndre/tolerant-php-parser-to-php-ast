@@ -64,7 +64,8 @@ if (!class_exists('\ast\Node')) {
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-final class TolerantASTConverter {
+final class TolerantASTConverter
+{
     // The latest stable version of php-ast.
     // For something > 50, update the library's release.
     // For something < 40, there are no releases.
@@ -107,7 +108,9 @@ final class TolerantASTConverter {
     private $instance_should_add_placeholders = false;
 
     // No-op.
-    public function __construct() { }
+    public function __construct()
+    {
+    }
 
     /** @return void */
     public function setShouldAddPlaceholders(bool $value)
@@ -199,13 +202,13 @@ final class TolerantASTConverter {
     {
         if ($parser_nodes instanceof PhpParser\Node\Statement\CompoundStatementNode) {
             $parser_nodes = $parser_nodes->statements;
-        } else if ($parser_nodes instanceof PhpParser\Node\StatementNode) {
+        } elseif ($parser_nodes instanceof PhpParser\Node\StatementNode) {
             if ($parser_nodes instanceof PhpParser\Node\Statement\EmptyStatement) {
                 $parser_nodes = [];
             } else {
                 $parser_nodes = [$parser_nodes];
             }
-        } else if ($parser_nodes instanceof Token) {
+        } elseif ($parser_nodes instanceof Token) {
             if ($parser_nodes->kind === TokenKind::SemicolonToken) {
                 if ($return_null_on_empty) {
                     return null;
@@ -234,7 +237,7 @@ final class TolerantASTConverter {
                 foreach ($child_node as $child_node_part) {
                     $children[] = $child_node_part;
                 }
-            } else if (!is_null($child_node)) {
+            } elseif (!is_null($child_node)) {
                 $children[] = $child_node;
             }
         }
@@ -264,7 +267,7 @@ final class TolerantASTConverter {
                 foreach ($child_node as $child_node_part) {
                     $children[] = $child_node_part;
                 }
-            } else if (!is_null($child_node)) {
+            } elseif (!is_null($child_node)) {
                 $children[] = $child_node;
             }
         }
@@ -289,7 +292,7 @@ final class TolerantASTConverter {
      * @return ast\Node|ast\Node[]|string|int|float|bool|null - whatever ast\parse_code would return as the equivalent.
      * @suppress PhanUndeclaredProperty
      */
-    private static final function phpParserNonValueNodeToAstNode($n)
+    final private static function phpParserNonValueNodeToAstNode($n)
     {
         if (!($n instanceof PhpParser\Node) && !($n instanceof Token)) {
             throw new \InvalidArgumentException("Invalid type for node: " . (\is_object($n) ? \get_class($n) : \gettype($n)) . ": " . self::debugDumpNodeOrToken($n));
@@ -300,7 +303,7 @@ final class TolerantASTConverter {
         if (\is_null($callback_map)) {
             $callback_map = self::initHandleMap();
             /** @param PhpParser\Node|Token $n */
-            $fallback_closure = function($n, int $unused_start_line) {
+            $fallback_closure = function ($n, int $unused_start_line) {
                 return self::astStub($n);
             };
         }
@@ -314,7 +317,7 @@ final class TolerantASTConverter {
      * @suppress PhanUndeclaredProperty
      * @throws InvalidNodeException when self::$should_add_placeholders is false, like many of these methods.
      */
-    private static final function phpParserNodeToAstNodeOrPlaceholderExpr($n)
+    final private static function phpParserNodeToAstNodeOrPlaceholderExpr($n)
     {
         if (!self::$should_add_placeholders) {
             return self::phpParserNodeToAstNode($n);
@@ -331,7 +334,7 @@ final class TolerantASTConverter {
      * @return ast\Node|ast\Node[]|string|int|float|bool|null - whatever ast\parse_code would return as the equivalent.
      * @suppress PhanUndeclaredProperty
      */
-    private static final function phpParserNodeToAstNode($n)
+    final private static function phpParserNodeToAstNode($n)
     {
         if (!($n instanceof PhpParser\Node) && !($n instanceof Token)) {
             throw new \InvalidArgumentException("Invalid type for node: " . (\is_object($n) ? \get_class($n) : \gettype($n)) . ": " . self::debugDumpNodeOrToken($n));
@@ -342,7 +345,7 @@ final class TolerantASTConverter {
         if (\is_null($callback_map)) {
             $callback_map = self::initHandleMap();
             /** @param PhpParser\Node|Token $n */
-            $fallback_closure = function($n, int $unused_start_line) {
+            $fallback_closure = function ($n, int $unused_start_line) {
                 return self::astStub($n);
             };
         }
@@ -402,10 +405,10 @@ final class TolerantASTConverter {
     {
         $closures = [
             /** @return ?ast\Node */
-            'Microsoft\PhpParser\Node\SourceFileNode' => function(PhpParser\Node\SourceFileNode $n, int $start_line) {
+            'Microsoft\PhpParser\Node\SourceFileNode' => function (PhpParser\Node\SourceFileNode $n, int $start_line) {
                 return self::phpParserStmtlistToAstNode($n->statementList, $start_line, false);
             },
-            'Microsoft\PhpParser\Node\Expression\ArgumentExpression' => function(PhpParser\Node\Expression\ArgumentExpression $n, int $start_line) {
+            'Microsoft\PhpParser\Node\Expression\ArgumentExpression' => function (PhpParser\Node\Expression\ArgumentExpression $n, int $start_line) {
                 // FIXME support foo(...$args)
                 $result = self::phpParserNodeToAstNode($n->expression);
                 if ($n->dotDotDotToken !== null) {
@@ -413,14 +416,14 @@ final class TolerantASTConverter {
                 }
                 return $result;
             },
-            'Microsoft\PhpParser\Node\Expression\SubscriptExpression' => function(PhpParser\Node\Expression\SubscriptExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\SubscriptExpression' => function (PhpParser\Node\Expression\SubscriptExpression $n, int $start_line) : ast\Node {
                 return new ast\Node(ast\AST_DIM, 0, [
                     'expr' => self::phpParserNodeToAstNode($n->postfixExpression),
                     'dim' => $n->accessExpression !== null ? self::phpParserNodeToAstNode($n->accessExpression) : null,
                 ], $start_line);
             },
             /** @return ?ast\Node */
-            'Microsoft\PhpParser\Node\Expression\AssignmentExpression' => function(PhpParser\Node\Expression\AssignmentExpression $n, int $start_line) {
+            'Microsoft\PhpParser\Node\Expression\AssignmentExpression' => function (PhpParser\Node\Expression\AssignmentExpression $n, int $start_line) {
                 try {
                     $var_node = self::phpParserNodeToAstNode($n->leftOperand);
                 } catch (InvalidNodeException $e) {
@@ -440,7 +443,7 @@ final class TolerantASTConverter {
                     $n->byRef !== null
                 );
             },
-            'Microsoft\PhpParser\Node\Expression\BinaryExpression' => function(PhpParser\Node\Expression\BinaryExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\BinaryExpression' => function (PhpParser\Node\Expression\BinaryExpression $n, int $start_line) : ast\Node {
                 static $lookup = [
                     TokenKind::AmpersandAmpersandToken              => ast\flags\BINARY_BOOL_AND,
                     TokenKind::AmpersandToken                       => ast\flags\BINARY_BITWISE_AND,
@@ -499,7 +502,7 @@ final class TolerantASTConverter {
                 }
                 return self::astNodeBinaryop($ast_kind, $n, $start_line);
             },
-            'Microsoft\PhpParser\Node\Expression\UnaryOpExpression' => function(PhpParser\Node\Expression\UnaryOpExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\UnaryOpExpression' => function (PhpParser\Node\Expression\UnaryOpExpression $n, int $start_line) : ast\Node {
                 static $lookup = [
                     TokenKind::TildeToken                   => ast\flags\UNARY_BITWISE_NOT,
                     TokenKind::MinusToken                   => ast\flags\UNARY_MINUS,
@@ -511,7 +514,7 @@ final class TolerantASTConverter {
                 \assert($ast_kind !== null, "missing $kind(" . Token::getTokenKindNameFromValue($kind) . ")");
                 return self::astNodeUnaryOp($ast_kind, self::phpParserNodeToAstNode($n->operand), $start_line);
             },
-            'Microsoft\PhpParser\Node\Expression\CastExpression' => function(PhpParser\Node\Expression\CastExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\CastExpression' => function (PhpParser\Node\Expression\CastExpression $n, int $start_line) : ast\Node {
                 static $lookup = [
                     TokenKind::ArrayCastToken   => ast\flags\TYPE_ARRAY,
                     TokenKind::BoolCastToken    => ast\flags\TYPE_BOOL,
@@ -526,7 +529,7 @@ final class TolerantASTConverter {
                 assert($ast_kind !== null, "missing $kind");
                 return self::astNodeCast($ast_kind, $n, $start_line);
             },
-            'Microsoft\PhpParser\Node\Expression\AnonymousFunctionCreationExpression' => function(PhpParser\Node\Expression\AnonymousFunctionCreationExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\AnonymousFunctionCreationExpression' => function (PhpParser\Node\Expression\AnonymousFunctionCreationExpression $n, int $start_line) : ast\Node {
                 $return_type_line = self::getEndLine($n->returnType) ?: $start_line;
                 $return_type = self::phpParserTypeToAstNode($n->returnType, $return_type_line);
                 if ($n->questionToken !== null) {
@@ -547,7 +550,7 @@ final class TolerantASTConverter {
                 // FIXME: add a test of ClassQualifiedName to php-ast
             },
             /** @return ?ast\Node */
-            'Microsoft\PhpParser\Node\Expression\ScopedPropertyAccessExpression' => function(PhpParser\Node\Expression\ScopedPropertyAccessExpression $n, int $start_line) {
+            'Microsoft\PhpParser\Node\Expression\ScopedPropertyAccessExpression' => function (PhpParser\Node\Expression\ScopedPropertyAccessExpression $n, int $start_line) {
                 $member_name = $n->memberName;
                 if ($member_name instanceof PhpParser\Node\Expression\Variable) {
                     return new ast\Node(
@@ -573,23 +576,23 @@ final class TolerantASTConverter {
                     return self::phpParserClassconstfetchToAstClassconstfetch($n->scopeResolutionQualifier, $member_name, $start_line);
                 }
             },
-            'Microsoft\PhpParser\Node\Expression\CloneExpression' => function(PhpParser\Node\Expression\CloneExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\CloneExpression' => function (PhpParser\Node\Expression\CloneExpression $n, int $start_line) : ast\Node {
                 return new ast\Node(ast\AST_CLONE, 0, ['expr' => self::phpParserNodeToAstNode($n->expression)], $start_line);
             },
-            'Microsoft\PhpParser\Node\Expression\ErrorControlExpression' => function(PhpParser\Node\Expression\ErrorControlExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\ErrorControlExpression' => function (PhpParser\Node\Expression\ErrorControlExpression $n, int $start_line) : ast\Node {
                 return self::astNodeUnaryOp(ast\flags\UNARY_SILENCE, self::phpParserNodeToAstNode($n->operand), $start_line);
             },
-            'Microsoft\PhpParser\Node\Expression\EmptyIntrinsicExpression' => function(PhpParser\Node\Expression\EmptyIntrinsicExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\EmptyIntrinsicExpression' => function (PhpParser\Node\Expression\EmptyIntrinsicExpression $n, int $start_line) : ast\Node {
                 return new ast\Node(ast\AST_EMPTY, 0, ['expr' => self::phpParserNodeToAstNode($n->expression)], $start_line);
             },
-            'Microsoft\PhpParser\Node\Expression\EvalIntrinsicExpression' => function(PhpParser\Node\Expression\EvalIntrinsicExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\EvalIntrinsicExpression' => function (PhpParser\Node\Expression\EvalIntrinsicExpression $n, int $start_line) : ast\Node {
                 return self::astNodeEval(
                     self::phpParserNodeToAstNode($n->expression),
                     $start_line
                 );
             },
             /** @return string|ast\Node */
-            'Microsoft\PhpParser\Token' => function(PhpParser\Token $token, int $start_line) {
+            'Microsoft\PhpParser\Token' => function (PhpParser\Token $token, int $start_line) {
                 $kind = $token->kind;
                 $str = self::tokenToString($token);
                 if ($kind === TokenKind::StaticKeyword) {
@@ -600,20 +603,20 @@ final class TolerantASTConverter {
             /**
              * @throws InvalidNodeException
              */
-            'Microsoft\PhpParser\MissingToken' => function(PhpParser\MissingToken $unused_node, int $_) {
+            'Microsoft\PhpParser\MissingToken' => function (PhpParser\MissingToken $unused_node, int $_) {
                 throw new InvalidNodeException();
             },
             /**
              * @throws InvalidNodeException
              */
-            'Microsoft\PhpParser\SkippedToken' => function(PhpParser\SkippedToken $unused_node, int $_) {
+            'Microsoft\PhpParser\SkippedToken' => function (PhpParser\SkippedToken $unused_node, int $_) {
                 throw new InvalidNodeException();
             },
-            'Microsoft\PhpParser\Node\Expression\ExitIntrinsicExpression' => function(PhpParser\Node\Expression\ExitIntrinsicExpression $n, int $start_line) {
+            'Microsoft\PhpParser\Node\Expression\ExitIntrinsicExpression' => function (PhpParser\Node\Expression\ExitIntrinsicExpression $n, int $start_line) {
                 $expr_node = $n->expression !== null ? self::phpParserNodeToAstNode($n->expression) : null;
                 return new ast\Node(ast\AST_EXIT, 0, ['expr' => $expr_node], $start_line);
             },
-            'Microsoft\PhpParser\Node\Expression\CallExpression' => function(PhpParser\Node\Expression\CallExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\CallExpression' => function (PhpParser\Node\Expression\CallExpression $n, int $start_line) : ast\Node {
                 $callable_expression = $n->callableExpression;
                 $arg_list = self::phpParserArgListToAstArgList($n->argumentExpressionList, $start_line);
                 if ($callable_expression instanceof PhpParser\Node\Expression\MemberAccessExpression) {  // $a->f()
@@ -623,7 +626,7 @@ final class TolerantASTConverter {
                         $arg_list,
                         $start_line
                     );
-                } else if ($callable_expression instanceof PhpParser\Node\Expression\ScopedPropertyAccessExpression) {  // a::f()
+                } elseif ($callable_expression instanceof PhpParser\Node\Expression\ScopedPropertyAccessExpression) {  // a::f()
                     return self::astNodeStaticCall(
                         self::phpParserNonValueNodeToAstNode($callable_expression->scopeResolutionQualifier),
                         self::phpParserNodeToAstNode($callable_expression->memberName),
@@ -638,14 +641,14 @@ final class TolerantASTConverter {
                     );
                 }
             },
-            'Microsoft\PhpParser\Node\Expression\ScriptInclusionExpression' => function(PhpParser\Node\Expression\ScriptInclusionExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\ScriptInclusionExpression' => function (PhpParser\Node\Expression\ScriptInclusionExpression $n, int $start_line) : ast\Node {
                 return self::astNodeInclude(
                     self::phpParserNodeToAstNode($n->expression),
                     $start_line,
                     $n->requireOrIncludeKeyword
                 );
             },
-            'Microsoft\PhpParser\Node\Expression\IssetIntrinsicExpression' => function(PhpParser\Node\Expression\IssetIntrinsicExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\IssetIntrinsicExpression' => function (PhpParser\Node\Expression\IssetIntrinsicExpression $n, int $start_line) : ast\Node {
                 $ast_issets = [];
                 foreach ($n->expressions->children as $var) {
                     if ($var instanceof Token && $var->kind === TokenKind::CommaToken) {
@@ -670,13 +673,13 @@ final class TolerantASTConverter {
                 }
                 return $e;
             },
-            'Microsoft\PhpParser\Node\Expression\ArrayCreationExpression' => function(PhpParser\Node\Expression\ArrayCreationExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\ArrayCreationExpression' => function (PhpParser\Node\Expression\ArrayCreationExpression $n, int $start_line) : ast\Node {
                 return self::phpParserArrayToAstArray($n, $start_line);
             },
-            'Microsoft\PhpParser\Node\Expression\ListIntrinsicExpression' => function(PhpParser\Node\Expression\ListIntrinsicExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\ListIntrinsicExpression' => function (PhpParser\Node\Expression\ListIntrinsicExpression $n, int $start_line) : ast\Node {
                 return self::phpParserListToAstList($n, $start_line);
             },
-            'Microsoft\PhpParser\Node\Expression\ObjectCreationExpression' => function(PhpParser\Node\Expression\ObjectCreationExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\ObjectCreationExpression' => function (PhpParser\Node\Expression\ObjectCreationExpression $n, int $start_line) : ast\Node {
                 $end_line = self::getEndLine($n);
                 $class_type_designator = $n->classTypeDesignator;
                 if ($class_type_designator instanceof Token && $class_type_designator->kind === TokenKind::ClassKeyword) {
@@ -699,28 +702,38 @@ final class TolerantASTConverter {
                     'args' => self::phpParserArgListToAstArgList($n->argumentExpressionList, $start_line),
                 ], $start_line);
             },
-            'Microsoft\PhpParser\Node\Expression\ParenthesizedExpression' => function(PhpParser\Node\Expression\ParenthesizedExpression $n, int $_) {
+            'Microsoft\PhpParser\Node\Expression\ParenthesizedExpression' => function (PhpParser\Node\Expression\ParenthesizedExpression $n, int $_) {
                 return self::phpParserNodeToAstNode($n->expression);
             },
-            'Microsoft\PhpParser\Node\Expression\PrefixUpdateExpression' => function(PhpParser\Node\Expression\PrefixUpdateExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\PrefixUpdateExpression' => function (PhpParser\Node\Expression\PrefixUpdateExpression $n, int $start_line) : ast\Node {
                 switch ($n->incrementOrDecrementOperator->kind) {
-                case TokenKind::PlusPlusToken: $type = ast\AST_PRE_INC; break;
-                case TokenKind::MinusMinusToken: $type = ast\AST_PRE_DEC; break;
-                default: throw new \RuntimeException('impossible operator ' . $n->incrementOrDecrementOperator->kind);
+                    case TokenKind::PlusPlusToken:
+                        $type = ast\AST_PRE_INC;
+                        break;
+                    case TokenKind::MinusMinusToken:
+                        $type = ast\AST_PRE_DEC;
+                        break;
+                    default:
+                        throw new \RuntimeException('impossible operator ' . $n->incrementOrDecrementOperator->kind);
                 }
 
                 return new ast\Node($type, 0, ['var' => self::phpParserNodeToAstNode($n->operand)], $start_line);
             },
-            'Microsoft\PhpParser\Node\Expression\PostfixUpdateExpression' => function(PhpParser\Node\Expression\PostfixUpdateExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\PostfixUpdateExpression' => function (PhpParser\Node\Expression\PostfixUpdateExpression $n, int $start_line) : ast\Node {
                 switch ($n->incrementOrDecrementOperator->kind) {
-                case TokenKind::PlusPlusToken: $type = ast\AST_POST_INC; break;
-                case TokenKind::MinusMinusToken: $type = ast\AST_POST_DEC; break;
-                default: throw new \RuntimeException('impossible operator ' . $n->incrementOrDecrementOperator->kind);
+                    case TokenKind::PlusPlusToken:
+                        $type = ast\AST_POST_INC;
+                        break;
+                    case TokenKind::MinusMinusToken:
+                        $type = ast\AST_POST_DEC;
+                        break;
+                    default:
+                        throw new \RuntimeException('impossible operator ' . $n->incrementOrDecrementOperator->kind);
                 }
 
                 return new ast\Node($type, 0, ['var' => self::phpParserNodeToAstNode($n->operand)], $start_line);
             },
-            'Microsoft\PhpParser\Node\Expression\PrintIntrinsicExpression' => function(PhpParser\Node\Expression\PrintIntrinsicExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\PrintIntrinsicExpression' => function (PhpParser\Node\Expression\PrintIntrinsicExpression $n, int $start_line) : ast\Node {
                 return new ast\Node(
                     ast\AST_PRINT,
                     0,
@@ -729,10 +742,10 @@ final class TolerantASTConverter {
                 );
             },
             /** @return ?ast\Node */
-            'Microsoft\PhpParser\Node\Expression\MemberAccessExpression' => function(PhpParser\Node\Expression\MemberAccessExpression $n, int $start_line) {
+            'Microsoft\PhpParser\Node\Expression\MemberAccessExpression' => function (PhpParser\Node\Expression\MemberAccessExpression $n, int $start_line) {
                 return self::phpParserMemberAccessExpressionToAstProp($n, $start_line);
             },
-            'Microsoft\PhpParser\Node\Expression\TernaryExpression' => function(PhpParser\Node\Expression\TernaryExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\TernaryExpression' => function (PhpParser\Node\Expression\TernaryExpression $n, int $start_line) : ast\Node {
                 return new ast\Node(
                     ast\AST_CONDITIONAL,
                     0,
@@ -745,7 +758,7 @@ final class TolerantASTConverter {
                 );
             },
             /** @return ?ast\Node */
-            'Microsoft\PhpParser\Node\Expression\Variable' => function(PhpParser\Node\Expression\Variable $n, int $start_line) {
+            'Microsoft\PhpParser\Node\Expression\Variable' => function (PhpParser\Node\Expression\Variable $n, int $start_line) {
                 $name_node = $n->name;
                 // TODO: 2 different ways to handle an Error. 1. Add a placeholder. 2. remove all of the statements in that tree.
                 if ($name_node instanceof PhpParser\Node) {
@@ -760,7 +773,7 @@ final class TolerantASTConverter {
                     } else {
                         $name_node = self::phpParserNodeToAstNode($name_node);
                     }
-                } else if ($name_node instanceof Token) {
+                } elseif ($name_node instanceof Token) {
                     if ($name_node instanceof PhpParser\MissingToken) {
                         if (self::$should_add_placeholders) {
                             $name_node = '__INCOMPLETE_VARIABLE__';
@@ -780,19 +793,19 @@ final class TolerantASTConverter {
             /**
              * @return ast\Node
              */
-            'Microsoft\PhpParser\Node\Expression\BracedExpression' => function(PhpParser\Node\Expression\BracedExpression $n, int $_) {
+            'Microsoft\PhpParser\Node\Expression\BracedExpression' => function (PhpParser\Node\Expression\BracedExpression $n, int $_) {
                 return self::phpParserNodeToAstNode($n->expression);
             },
-            'Microsoft\PhpParser\Node\Expression\YieldExpression' => function(PhpParser\Node\Expression\YieldExpression $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Expression\YieldExpression' => function (PhpParser\Node\Expression\YieldExpression $n, int $start_line) : ast\Node {
                 switch ($n->yieldOrYieldFromKeyword->kind) {
-                case TokenKind::YieldKeyword:
-                    $kind = ast\AST_YIELD;
-                    break;
-                case TokenKind::YieldFromKeyword:
-                    $kind = ast\AST_YIELD_FROM;
-                    break;
-                default:
-                    throw new \RuntimeException("Invalid yield expression kind {$n->yieldOrYieldFromKeyword->kind}");
+                    case TokenKind::YieldKeyword:
+                        $kind = ast\AST_YIELD;
+                        break;
+                    case TokenKind::YieldFromKeyword:
+                        $kind = ast\AST_YIELD_FROM;
+                        break;
+                    default:
+                        throw new \RuntimeException("Invalid yield expression kind {$n->yieldOrYieldFromKeyword->kind}");
                 }
                 $array_element = $n->arrayElement;
                 $element_value = $array_element->elementValue;
@@ -815,7 +828,7 @@ final class TolerantASTConverter {
                     $start_line
                 );
             },
-            'Microsoft\PhpParser\Node\ReservedWord' => function(PhpParser\Node\ReservedWord $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\ReservedWord' => function (PhpParser\Node\ReservedWord $n, int $start_line) : ast\Node {
                 return new ast\Node(
                     ast\AST_NAME,
                     ast\flags\NAME_NOT_FQ,
@@ -823,10 +836,10 @@ final class TolerantASTConverter {
                     $start_line
                 );
             },
-            'Microsoft\PhpParser\Node\QualifiedName' => function(PhpParser\Node\QualifiedName $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\QualifiedName' => function (PhpParser\Node\QualifiedName $n, int $start_line) : ast\Node {
                 return self::astNodeName($n, $start_line);
             },
-            'Microsoft\PhpParser\Node\Parameter' => function(PhpParser\Node\Parameter $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Parameter' => function (PhpParser\Node\Parameter $n, int $start_line) : ast\Node {
                 $type_line = self::getEndLine($n->typeDeclaration) ?: $start_line;
                 return self::astNodeParam(
                     $n->questionToken !== null,
@@ -839,7 +852,7 @@ final class TolerantASTConverter {
                 );
             },
             /** @return int|float */
-            'Microsoft\PhpParser\Node\NumericLiteral' => function(PhpParser\Node\NumericLiteral $n, int $_) {
+            'Microsoft\PhpParser\Node\NumericLiteral' => function (PhpParser\Node\NumericLiteral $n, int $_) {
                 $text = self::tokenToString($n->children);
                 $as_int = filter_var($text, FILTER_VALIDATE_INT, FILTER_FLAG_ALLOW_OCTAL | FILTER_FLAG_ALLOW_HEX);
                 if ($as_int !== false) {
@@ -852,13 +865,13 @@ final class TolerantASTConverter {
              * @suppress PhanAccessMethodInternal
              * @return ast\Node|string
              */
-            'Microsoft\PhpParser\Node\StringLiteral' => function(PhpParser\Node\StringLiteral $n, int $_) {
+            'Microsoft\PhpParser\Node\StringLiteral' => function (PhpParser\Node\StringLiteral $n, int $_) {
                 $children = $n->children;
                 if ($children instanceof Token) {  // TODO: remove if unnecessary
                     $inner_node = self::parseQuotedString($n);
-                } else if (\count($children) === 0) {
+                } elseif (\count($children) === 0) {
                     $inner_node = '';
-                } else if (\count($children) === 1 && $children[0] instanceof Token) {
+                } elseif (\count($children) === 1 && $children[0] instanceof Token) {
                     $inner_node = self::parseQuotedString($n);
                 } else {
                     $inner_node_parts = [];
@@ -889,7 +902,7 @@ final class TolerantASTConverter {
                 }
                 return $inner_node;
             },
-            'Microsoft\PhpParser\Node\Statement\CompoundStatementNode' => function(PhpParser\Node\Statement\CompoundStatementNode $n, int $_) {
+            'Microsoft\PhpParser\Node\Statement\CompoundStatementNode' => function (PhpParser\Node\Statement\CompoundStatementNode $n, int $_) {
                 $children = [];
                 foreach ($n->statements as $parser_node) {
                     $child_node = self::phpParserNodeToAstNode($parser_node);
@@ -898,7 +911,7 @@ final class TolerantASTConverter {
                         foreach ($child_node as $child_node_part) {
                             $children[] = $child_node_part;
                         }
-                    } else if (!is_null($child_node)) {
+                    } elseif (!is_null($child_node)) {
                         $children[] = $child_node;
                     }
                 }
@@ -909,26 +922,26 @@ final class TolerantASTConverter {
              * null if incomplete
              * int|string for no-op scalar statements like `;2;`
              */
-            'Microsoft\PhpParser\Node\Statement\ExpressionStatement' => function(PhpParser\Node\Statement\ExpressionStatement $n, int $_) {
+            'Microsoft\PhpParser\Node\Statement\ExpressionStatement' => function (PhpParser\Node\Statement\ExpressionStatement $n, int $_) {
                 return self::phpParserNodeToAstNode($n->expression);
             },
             /**
              * @suppress PhanTypeMismatchArgument incorrect phpdoc for breakoutLevel
              */
-            'Microsoft\PhpParser\Node\Statement\BreakOrContinueStatement' => function(PhpParser\Node\Statement\BreakOrContinueStatement $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Statement\BreakOrContinueStatement' => function (PhpParser\Node\Statement\BreakOrContinueStatement $n, int $start_line) : ast\Node {
                 switch ($n->breakOrContinueKeyword->kind) {
-                case TokenKind::BreakKeyword:
-                    $kind = ast\AST_BREAK;
-                    break;
-                case TokenKind::ContinueKeyword:
-                    $kind = ast\AST_CONTINUE;
-                    break;
-                default:
-                    throw new \InvalidArgumentException("Invalid BreakOrContinueStatement token $kind");
+                    case TokenKind::BreakKeyword:
+                        $kind = ast\AST_BREAK;
+                        break;
+                    case TokenKind::ContinueKeyword:
+                        $kind = ast\AST_CONTINUE;
+                        break;
+                    default:
+                        throw new \InvalidArgumentException("Invalid BreakOrContinueStatement token $kind");
                 }
                 return new ast\Node($kind, 0, ['depth' => isset($n->breakoutLevel) ? (int)self::phpParserNodeToAstNode($n->breakoutLevel) : null], $start_line);
             },
-            'Microsoft\PhpParser\Node\CatchClause' => function(PhpParser\Node\CatchClause $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\CatchClause' => function (PhpParser\Node\CatchClause $n, int $start_line) : ast\Node {
                 $catch_node = self::phpParserNonValueNodeToAstNode($n->qualifiedName);
                 $catch_list_node = new ast\Node(ast\AST_NAME_LIST, 0, [$catch_node], $catch_node->lineno);
                 // TODO: Change after https://github.com/Microsoft/tolerant-php-parser/issues/103 is supported
@@ -950,7 +963,7 @@ Node\SourceFileNode
     endOfFileToken: Token: EndOfFileToken(1): ""
              */
 
-            'Microsoft\PhpParser\Node\Statement\InterfaceDeclaration' => function(PhpParser\Node\Statement\InterfaceDeclaration $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Statement\InterfaceDeclaration' => function (PhpParser\Node\Statement\InterfaceDeclaration $n, int $start_line) : ast\Node {
                 $end_line = self::getEndLine($n) ?: $start_line;
                 // FIXME: interface extending other interface
                 return self::astStmtClass(
@@ -964,7 +977,7 @@ Node\SourceFileNode
                     $n->getDocCommentText()
                 );
             },
-            'Microsoft\PhpParser\Node\Statement\ClassDeclaration' => function(PhpParser\Node\Statement\ClassDeclaration $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Statement\ClassDeclaration' => function (PhpParser\Node\Statement\ClassDeclaration $n, int $start_line) : ast\Node {
                 $end_line = self::getEndLine($n);
                 return self::astStmtClass(
                     self::phpParserClassModifierToAstClassFlags($n->abstractOrFinalModifier),
@@ -977,7 +990,7 @@ Node\SourceFileNode
                     $n->getDocCommentText()
                 );
             },
-            'Microsoft\PhpParser\Node\Statement\TraitDeclaration' => function(PhpParser\Node\Statement\TraitDeclaration $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Statement\TraitDeclaration' => function (PhpParser\Node\Statement\TraitDeclaration $n, int $start_line) : ast\Node {
                 $end_line = self::getEndLine($n) ?: $start_line;
                 return self::astStmtClass(
                     ast\flags\CLASS_TRAIT,
@@ -990,10 +1003,10 @@ Node\SourceFileNode
                     $n->getDocCommentText()
                 );
             },
-            'Microsoft\PhpParser\Node\ClassConstDeclaration' => function(PhpParser\Node\ClassConstDeclaration $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\ClassConstDeclaration' => function (PhpParser\Node\ClassConstDeclaration $n, int $start_line) : ast\Node {
                 return self::phpParserClassConstToAstNode($n, $start_line);
             },
-            'Microsoft\PhpParser\Node\MethodDeclaration' => function(PhpParser\Node\MethodDeclaration $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\MethodDeclaration' => function (PhpParser\Node\MethodDeclaration $n, int $start_line) : ast\Node {
                 $statements = $n->compoundStatementOrSemicolon;
                 $return_type = self::phpParserTypeToAstNode($n->returnType, self::getEndLine($n->returnType) ?: $start_line);
                 if ($n->questionToken !== null) {
@@ -1015,10 +1028,10 @@ Node\SourceFileNode
                     self::nextDeclId()
                 );
             },
-            'Microsoft\PhpParser\Node\Statement\ConstDeclaration' => function(PhpParser\Node\Statement\ConstDeclaration $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Statement\ConstDeclaration' => function (PhpParser\Node\Statement\ConstDeclaration $n, int $start_line) : ast\Node {
                 return self::phpParserConstToAstNode($n, $start_line);
             },
-            'Microsoft\PhpParser\Node\Statement\DeclareStatement' => function(PhpParser\Node\Statement\DeclareStatement $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Statement\DeclareStatement' => function (PhpParser\Node\Statement\DeclareStatement $n, int $start_line) : ast\Node {
                 $doc_comment = $n->getDocCommentText();
                 $directive = $n->declareDirective;
                 assert($directive instanceof PhpParser\Node\DeclareDirective);
@@ -1028,7 +1041,7 @@ Node\SourceFileNode
                     $start_line
                 );
             },
-            'Microsoft\PhpParser\Node\Statement\DoStatement' => function(PhpParser\Node\Statement\DoStatement $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Statement\DoStatement' => function (PhpParser\Node\Statement\DoStatement $n, int $start_line) : ast\Node {
                 return new ast\Node(
                     ast\AST_DO_WHILE,
                     0,
@@ -1042,7 +1055,7 @@ Node\SourceFileNode
             /**
              * @return ast\Node|ast\Node[]
              */
-            'Microsoft\PhpParser\Node\Expression\EchoExpression' => function(PhpParser\Node\Expression\EchoExpression $n, int $start_line) {
+            'Microsoft\PhpParser\Node\Expression\EchoExpression' => function (PhpParser\Node\Expression\EchoExpression $n, int $start_line) {
                 $ast_echos = [];
                 foreach ($n->expressions->children as $expr) {
                     if ($expr instanceof Token && $expr->kind === TokenKind::CommaToken) {
@@ -1057,10 +1070,10 @@ Node\SourceFileNode
                 }
                 return \count($ast_echos) === 1 ? $ast_echos[0] : $ast_echos;
             },
-            'Microsoft\PhpParser\Node\ForeachKey' => function(PhpParser\Node\ForeachKey $n, int $_) : ast\Node {
+            'Microsoft\PhpParser\Node\ForeachKey' => function (PhpParser\Node\ForeachKey $n, int $_) : ast\Node {
                 return self::phpParserNodeToAstNode($n->expression);
             },
-            'Microsoft\PhpParser\Node\Statement\ForeachStatement' => function(PhpParser\Node\Statement\ForeachStatement $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Statement\ForeachStatement' => function (PhpParser\Node\Statement\ForeachStatement $n, int $start_line) : ast\Node {
                 $foreach_value = $n->foreachValue;
                 $value = self::phpParserNodeToAstNode($foreach_value->expression);
                 if ($foreach_value->ampersand) {
@@ -1084,10 +1097,10 @@ Node\SourceFileNode
                 );
                 //return self::phpParserStmtlistToAstNode($n->statements, $start_line);
             },
-            'Microsoft\PhpParser\Node\FinallyClause' => function(PhpParser\Node\FinallyClause $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\FinallyClause' => function (PhpParser\Node\FinallyClause $n, int $start_line) : ast\Node {
                 return self::phpParserStmtlistToAstNode($n->compoundStatement, $start_line, false);
             },
-            'Microsoft\PhpParser\Node\Statement\FunctionDeclaration' => function(PhpParser\Node\Statement\FunctionDeclaration $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Statement\FunctionDeclaration' => function (PhpParser\Node\Statement\FunctionDeclaration $n, int $start_line) : ast\Node {
                 $end_line = self::getEndLine($n) ?: $start_line;
                 $return_type = $n->returnType;
                 $return_type_line = ($return_type ? self::getEndLineForNodeOrToken($return_type) : 0) ?: $end_line;
@@ -1109,7 +1122,7 @@ Node\SourceFileNode
                 );
             },
             /** @return ast\Node|ast\Node[] */
-            'Microsoft\PhpParser\Node\Statement\GlobalDeclaration' => function(PhpParser\Node\Statement\GlobalDeclaration $n, int $start_line) {
+            'Microsoft\PhpParser\Node\Statement\GlobalDeclaration' => function (PhpParser\Node\Statement\GlobalDeclaration $n, int $start_line) {
                 $global_nodes = [];
                 foreach ($n->variableNameList->children ?? [] as $var) {
                     if ($var instanceof Token && $var->kind === TokenKind::CommaToken) {
@@ -1119,11 +1132,11 @@ Node\SourceFileNode
                 }
                 return \count($global_nodes) === 1 ? $global_nodes[0] : $global_nodes;
             },
-            'Microsoft\PhpParser\Node\Statement\IfStatementNode' => function(PhpParser\Node\Statement\IfStatementNode $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Statement\IfStatementNode' => function (PhpParser\Node\Statement\IfStatementNode $n, int $start_line) : ast\Node {
                 return self::phpParserIfStmtToAstIfStmt($n, $start_line);
             },
             /** @return ast\Node|ast\Node[] */
-            'Microsoft\PhpParser\Node\Statement\InlineHtml' => function(PhpParser\Node\Statement\InlineHtml $n, int $start_line) {
+            'Microsoft\PhpParser\Node\Statement\InlineHtml' => function (PhpParser\Node\Statement\InlineHtml $n, int $start_line) {
                 $text = $n->text;
                 if ($text === null) {
                     return [];  // For the beginning/end of files
@@ -1136,7 +1149,7 @@ Node\SourceFileNode
                 );
             },
             /** @suppress PhanTypeMismatchArgument TODO: Make ForStatement have more accurate docs? */
-            'Microsoft\PhpParser\Node\Statement\ForStatement' => function(PhpParser\Node\Statement\ForStatement $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Statement\ForStatement' => function (PhpParser\Node\Statement\ForStatement $n, int $start_line) : ast\Node {
                 return new ast\Node(
                     ast\AST_FOR,
                     0,
@@ -1150,7 +1163,7 @@ Node\SourceFileNode
                 );
             },
             /** @return ast\Node[] */
-            'Microsoft\PhpParser\Node\Statement\NamespaceUseDeclaration' => function(PhpParser\Node\Statement\NamespaceUseDeclaration $n, int $start_line) {
+            'Microsoft\PhpParser\Node\Statement\NamespaceUseDeclaration' => function (PhpParser\Node\Statement\NamespaceUseDeclaration $n, int $start_line) {
                 $useClauses = $n->useClauses;
                 $results = [];
                 $parserUseKind = $n->functionOrConst->kind ?? null;
@@ -1172,7 +1185,7 @@ Node\SourceFileNode
                 }
                 return $results;
             },
-            'Microsoft\PhpParser\Node\Statement\NamespaceDefinition' => function(PhpParser\Node\Statement\NamespaceDefinition $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Statement\NamespaceDefinition' => function (PhpParser\Node\Statement\NamespaceDefinition $n, int $start_line) : ast\Node {
                 $stmt = $n->compoundStatementOrSemicolon;
                 $name_node = $n->name;
                 if ($stmt instanceof PhpParser\Node) {
@@ -1192,25 +1205,25 @@ Node\SourceFileNode
                     $start_line
                 );
             },
-            'Microsoft\PhpParser\Node\Statement\EmptyStatement' => function(PhpParser\Node\Statement\EmptyStatement $unused_node, int $unused_start_line) : array {
+            'Microsoft\PhpParser\Node\Statement\EmptyStatement' => function (PhpParser\Node\Statement\EmptyStatement $unused_node, int $unused_start_line) : array {
                 // `;;`
                 return [];
             },
-            'Microsoft\PhpParser\Node\PropertyDeclaration' => function(PhpParser\Node\PropertyDeclaration $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\PropertyDeclaration' => function (PhpParser\Node\PropertyDeclaration $n, int $start_line) : ast\Node {
                 return self::phpParserPropertyToAstNode($n, $start_line);
             },
-            'Microsoft\PhpParser\Node\Statement\ReturnStatement' => function(PhpParser\Node\Statement\ReturnStatement $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Statement\ReturnStatement' => function (PhpParser\Node\Statement\ReturnStatement $n, int $start_line) : ast\Node {
                 $expr_node = $n->expression !== null ? self::phpParserNodeToAstNode($n->expression) : null;
                 return new ast\Node(ast\AST_RETURN, 0, ['expr' => $expr_node], $start_line);
             },
             /** @return ast\Node|ast\Node[] */
-            'Microsoft\PhpParser\Node\Statement\FunctionStaticDeclaration' => function(PhpParser\Node\Statement\FunctionStaticDeclaration $n, int $start_line) {
+            'Microsoft\PhpParser\Node\Statement\FunctionStaticDeclaration' => function (PhpParser\Node\Statement\FunctionStaticDeclaration $n, int $start_line) {
                 $static_nodes = [];
                 foreach ($n->staticVariableNameList->children ?? [] as $var) {
                     if ($var instanceof Token) {
                         continue;
                     }
-                    assert ($var instanceof PhpParser\Node\StaticVariableDeclaration);  // FIXME error tolerance
+                    assert($var instanceof PhpParser\Node\StaticVariableDeclaration);  // FIXME error tolerance
 
                     $static_nodes[] = new ast\Node(ast\AST_STATIC, 0, [
                         'var' => new ast\Node(ast\AST_VAR, 0, ['name' => self::phpParserNodeToAstNode($var->variableName)], self::getEndLine($var) ?: $start_line),
@@ -1219,10 +1232,10 @@ Node\SourceFileNode
                 }
                 return \count($static_nodes) === 1 ? $static_nodes[0] : $static_nodes;
             },
-            'Microsoft\PhpParser\Node\Statement\SwitchStatementNode' => function(PhpParser\Node\Statement\SwitchStatementNode $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Statement\SwitchStatementNode' => function (PhpParser\Node\Statement\SwitchStatementNode $n, int $start_line) : ast\Node {
                 return self::phpParserSwitchListToAstSwitch($n, $start_line);
             },
-            'Microsoft\PhpParser\Node\Statement\ThrowStatement' => function(PhpParser\Node\Statement\ThrowStatement $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Statement\ThrowStatement' => function (PhpParser\Node\Statement\ThrowStatement $n, int $start_line) : ast\Node {
                 return new ast\Node(
                     ast\AST_THROW,
                     0,
@@ -1231,7 +1244,7 @@ Node\SourceFileNode
                 );
             },
 
-            'Microsoft\PhpParser\Node\TraitUseClause' => function(PhpParser\Node\TraitUseClause $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\TraitUseClause' => function (PhpParser\Node\TraitUseClause $n, int $start_line) : ast\Node {
                 $clauses_list_node = $n->traitSelectAndAliasClauses;
                 if ($clauses_list_node instanceof PhpParser\Node\DelimitedList\TraitSelectOrAliasClauseList) {
                     $adaptations_inner = [];
@@ -1258,7 +1271,7 @@ Node\SourceFileNode
             },
 
             /** @suppress PhanTypeMismatchArgument */
-            'Microsoft\PhpParser\Node\TraitSelectOrAliasClause' => function(PhpParser\Node\TraitSelectOrAliasClause $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\TraitSelectOrAliasClause' => function (PhpParser\Node\TraitSelectOrAliasClause $n, int $start_line) : ast\Node {
                 // FIXME targetName phpdoc is wrong.
                 $name = $n->name;
                 $target_name = $n->targetName;
@@ -1316,7 +1329,7 @@ Node\SourceFileNode
                      */
                 }
             },
-            'Microsoft\PhpParser\Node\Statement\TryStatement' => function(PhpParser\Node\Statement\TryStatement $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Statement\TryStatement' => function (PhpParser\Node\Statement\TryStatement $n, int $start_line) : ast\Node {
                 if (!is_array($n->catchClauses)) {
                     throw new \Error(sprintf("Unsupported type %s\n%s", get_class($n), self::debugDumpNodeOrToken($n->catchClauses)));
                 }
@@ -1328,25 +1341,25 @@ Node\SourceFileNode
                 );
             },
             /** @return ast\Node|ast\Node[] */
-            'Microsoft\PhpParser\Node\Expression\UnsetIntrinsicExpression' => function(PhpParser\Node\Expression\UnsetIntrinsicExpression $n, int $start_line) {
+            'Microsoft\PhpParser\Node\Expression\UnsetIntrinsicExpression' => function (PhpParser\Node\Expression\UnsetIntrinsicExpression $n, int $start_line) {
                 $stmts = [];
                 foreach ($n->expressions->children as $var) {
                     $stmts[] = new ast\Node(ast\AST_UNSET, 0, ['var' => self::phpParserNodeToAstNode($var)], self::getEndLine($var) ?: $start_line);
                 }
                 return \count($stmts) === 1 ? $stmts[0] : $stmts;
             },
-            'Microsoft\PhpParser\Node\Statement\WhileStatement' => function(PhpParser\Node\Statement\WhileStatement $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Statement\WhileStatement' => function (PhpParser\Node\Statement\WhileStatement $n, int $start_line) : ast\Node {
                 return self::astNodeWhile(
                     self::phpParserNodeToAstNode($n->expression),
                     self::phpParserStmtlistToAstNode($n->statements, $start_line, true),
                     $start_line
                 );
             },
-            'Microsoft\PhpParser\Node\Statement\GotoStatement' => function(PhpParser\Node\Statement\GotoStatement $n, int $start_line) : ast\Node {
+            'Microsoft\PhpParser\Node\Statement\GotoStatement' => function (PhpParser\Node\Statement\GotoStatement $n, int $start_line) : ast\Node {
                 return new ast\Node(ast\AST_GOTO, 0, ['label' => self::tokenToString($n->name)], $start_line);
             },
             /** @return ast\Node[] */
-            'Microsoft\PhpParser\Node\Statement\NamedLabelStatement' => function(PhpParser\Node\Statement\NamedLabelStatement $n, int $start_line) {
+            'Microsoft\PhpParser\Node\Statement\NamedLabelStatement' => function (PhpParser\Node\Statement\NamedLabelStatement $n, int $start_line) {
                 $label = new ast\Node(ast\AST_LABEL, 0, ['name' => self::tokenToString($n->name)], $start_line);
                 $statement = self::phpParserNodeToAstNode($n->statement);
                 return [$label, $statement];
@@ -1437,34 +1450,39 @@ Node\SourceFileNode
         );
     }
 
-    private static function astNodeUnaryOp(int $flags, $expr, int $line) : ast\Node {
+    private static function astNodeUnaryOp(int $flags, $expr, int $line) : ast\Node
+    {
         return new ast\Node(ast\AST_UNARY_OP, $flags, ['expr' => $expr], $line);
     }
 
-    private static function astNodeCast(int $flags, PhpParser\Node\Expression\CastExpression $n, int $line) : ast\Node {
+    private static function astNodeCast(int $flags, PhpParser\Node\Expression\CastExpression $n, int $line) : ast\Node
+    {
         return new ast\Node(ast\AST_CAST, $flags, ['expr' => self::phpParserNodeToAstNode($n->operand)], self::getEndLine($n) ?: $line);
     }
 
-    private static function astNodeEval($expr, int $line) : ast\Node {
+    private static function astNodeEval($expr, int $line) : ast\Node
+    {
         return new ast\Node(ast\AST_INCLUDE_OR_EVAL, ast\flags\EXEC_EVAL, ['expr' => $expr], $line);
     }
 
-    private static function phpParserIncludeTokenToAstIncludeFlags(Token $type) : int {
+    private static function phpParserIncludeTokenToAstIncludeFlags(Token $type) : int
+    {
         $type_name = strtolower(self::tokenToString($type));
-        switch($type_name) {
-        case 'include':
-            return ast\flags\EXEC_INCLUDE;
-        case 'include_once':
-            return ast\flags\EXEC_INCLUDE_ONCE;
-        case 'require':
-            return ast\flags\EXEC_REQUIRE;
-        case 'require_once':
-            return ast\flags\EXEC_REQUIRE_ONCE;
-        default:
-            throw new \Error("Unrecognized PhpParser include/require type $type_name");
+        switch ($type_name) {
+            case 'include':
+                return ast\flags\EXEC_INCLUDE;
+            case 'include_once':
+                return ast\flags\EXEC_INCLUDE_ONCE;
+            case 'require':
+                return ast\flags\EXEC_REQUIRE;
+            case 'require_once':
+                return ast\flags\EXEC_REQUIRE_ONCE;
+            default:
+                throw new \Error("Unrecognized PhpParser include/require type $type_name");
         }
     }
-    private static function astNodeInclude($expr, int $line, Token $type) : ast\Node {
+    private static function astNodeInclude($expr, int $line, Token $type) : ast\Node
+    {
         $flags = self::phpParserIncludeTokenToAstIncludeFlags($type);
         return new ast\Node(ast\AST_INCLUDE_OR_EVAL, $flags, ['expr' => $expr], $line);
     }
@@ -1473,66 +1491,77 @@ Node\SourceFileNode
      * @param PhpParser\Node\QualifiedName|Token|null $type
      * @return ?ast\Node
      */
-    private static function phpParserTypeToAstNode($type, int $line) {
+    private static function phpParserTypeToAstNode($type, int $line)
+    {
         if (is_null($type)) {
             return null;
         }
         $original_type = $type;
         if ($type instanceof PhpParser\Node\QualifiedName) {
             $type = self::phpParserNameToString($type);
-        } else if ($type instanceof Token) {
+        } elseif ($type instanceof Token) {
             $type = self::tokenToString($type);
         }
         if (\is_string($type)) {
-            switch(\strtolower($type)) {
-            case 'null':
-                $flags = ast\flags\TYPE_NULL; break;
-            case 'bool':
-                $flags = ast\flags\TYPE_BOOL; break;
-            case 'int':
-                $flags = ast\flags\TYPE_LONG; break;
-            case 'float':
-                $flags = ast\flags\TYPE_DOUBLE; break;
-            case 'string':
-                $flags = ast\flags\TYPE_STRING; break;
-            case 'array':
-                $flags = ast\flags\TYPE_ARRAY; break;
-            case 'object':
-                if (self::$ast_version >= 45) {
-                    $flags = ast\flags\TYPE_OBJECT; break;
-                } else {
+            switch (\strtolower($type)) {
+                case 'null':
+                    $flags = ast\flags\TYPE_NULL;
+                    break;
+                case 'bool':
+                    $flags = ast\flags\TYPE_BOOL;
+                    break;
+                case 'int':
+                    $flags = ast\flags\TYPE_LONG;
+                    break;
+                case 'float':
+                    $flags = ast\flags\TYPE_DOUBLE;
+                    break;
+                case 'string':
+                    $flags = ast\flags\TYPE_STRING;
+                    break;
+                case 'array':
+                    $flags = ast\flags\TYPE_ARRAY;
+                    break;
+                case 'object':
+                    if (self::$ast_version >= 45) {
+                        $flags = ast\flags\TYPE_OBJECT;
+                        break;
+                    } else {
+                        return new ast\Node(
+                            ast\AST_NAME,
+                            substr($type, 0, 1) === '\\' ? ast\flags\NAME_FQ : ast\flags\NAME_NOT_FQ,  // FIXME wrong.
+                            [
+                            'name' => $type,
+                            ],
+                            $line
+                        );
+                    }
+                case 'callable':
+                    $flags = ast\flags\TYPE_CALLABLE;
+                    break;
+                case 'void':
+                    $flags = ast\flags\TYPE_VOID;
+                    break;
+                case 'iterable':
+                    $flags = ast\flags\TYPE_ITERABLE;
+                    break;
+                default:
+                    // TODO: Refactor this into a function accepting a QualifiedName
+                    if ($original_type->globalSpecifier !== null) {
+                        $ast_kind = ast\flags\NAME_FQ;
+                    } elseif (($original_type->relativeSpecifier->namespaceKeyword ?? null) !== null) {
+                        $ast_kind = ast\flags\NAME_RELATIVE;
+                    } else {
+                        $ast_kind = ast\flags\NAME_NOT_FQ;
+                    }
                     return new ast\Node(
                         ast\AST_NAME,
-                        substr($type, 0, 1) === '\\' ? ast\flags\NAME_FQ : ast\flags\NAME_NOT_FQ,  // FIXME wrong.
+                        $ast_kind,
                         [
-                            'name' => $type,
+                        'name' => $type,
                         ],
                         $line
                     );
-                }
-            case 'callable':
-                $flags = ast\flags\TYPE_CALLABLE; break;
-            case 'void':
-                $flags = ast\flags\TYPE_VOID; break;
-            case 'iterable':
-                $flags = ast\flags\TYPE_ITERABLE; break;
-            default:
-                // TODO: Refactor this into a function accepting a QualifiedName
-                if ($original_type->globalSpecifier !== null) {
-                    $ast_kind = ast\flags\NAME_FQ;
-                } else if (($original_type->relativeSpecifier->namespaceKeyword ?? null) !== null) {
-                    $ast_kind = ast\flags\NAME_RELATIVE;
-                } else {
-                    $ast_kind = ast\flags\NAME_NOT_FQ;
-                }
-                return new ast\Node(
-                    ast\AST_NAME,
-                    $ast_kind,
-                    [
-                        'name' => $type,
-                    ],
-                    $line
-                );
             }
             return new ast\Node(ast\AST_TYPE, $flags, [], $line);
         }
@@ -1544,7 +1573,8 @@ Node\SourceFileNode
      * @param ?ast\Node $type
      * @param string $name
      */
-    private static function astNodeParam(bool $is_nullable, bool $by_ref, bool $variadic, $type, $name, $default, int $line) : ast\Node {
+    private static function astNodeParam(bool $is_nullable, bool $by_ref, bool $variadic, $type, $name, $default, int $line) : ast\Node
+    {
         if ($is_nullable) {
             $type = self::astNodeNullableType(
                 $type,
@@ -1563,7 +1593,8 @@ Node\SourceFileNode
         );
     }
 
-    private static function astNodeNullableType(ast\Node $type, int $line) {
+    private static function astNodeNullableType(ast\Node $type, int $line)
+    {
         return new ast\Node(
             ast\AST_NULLABLE_TYPE,
             0,
@@ -1572,7 +1603,8 @@ Node\SourceFileNode
         );
     }
 
-    private static function astNodeName(PhpParser\Node\QualifiedName $name, int $line) : ast\Node {
+    private static function astNodeName(PhpParser\Node\QualifiedName $name, int $line) : ast\Node
+    {
         $name_parts = $name->nameParts;
         if (\count($name_parts) === 1) {
             $part = $name_parts[0];
@@ -1593,7 +1625,7 @@ Node\SourceFileNode
         }
         if ($name->globalSpecifier !== null) {
             $ast_kind = ast\flags\NAME_FQ;
-        } else if (($name->relativeSpecifier->namespaceKeyword ?? null) !== null) {
+        } elseif (($name->relativeSpecifier->namespaceKeyword ?? null) !== null) {
             $ast_kind = ast\flags\NAME_RELATIVE;
         } else {
             $ast_kind = ast\flags\NAME_NOT_FQ;
@@ -1601,12 +1633,14 @@ Node\SourceFileNode
         return new ast\Node(ast\AST_NAME, $ast_kind, ['name' => $imploded_parts], $line);
     }
 
-    private static function astMagicConst(int $flags, int $line) {
+    private static function astMagicConst(int $flags, int $line)
+    {
         return new ast\Node(ast\AST_MAGIC_CONST, $flags, [], $line);
     }
 
     /** @param ?PhpParser\Node\DelimitedList\ParameterDeclarationList $parser_params */
-    private static function phpParserParamsToAstParams($parser_params, int $line) : ast\Node {
+    private static function phpParserParamsToAstParams($parser_params, int $line) : ast\Node
+    {
         $new_params = [];
         foreach ($parser_params->children ?? [] as $parser_node) {
             if ($parser_node instanceof Token) {
@@ -1625,7 +1659,8 @@ Node\SourceFileNode
     /**
      * @suppress PhanTypeMismatchProperty - Deliberately wrong type of kind
      */
-    private static function astStub($parser_node) : ast\Node {
+    private static function astStub($parser_node) : ast\Node
+    {
         // Debugging code.
         if (\getenv(self::ENV_AST_THROW_INVALID)) {
             throw new \Error("TODO:" . get_class($parser_node));
@@ -1660,7 +1695,6 @@ Node\SourceFileNode
             $ast_uses[] = new ast\Node(ast\AST_CLOSURE_VAR, $use->byRef ? 1 : 0, ['name' => self::tokenToString($use->variableName)], self::getStartLine($use));
         }
         return new ast\Node(ast\AST_CLOSURE_USES, 0, $ast_uses, $ast_uses[0]->lineno ?? $line);
-
     }
 
     /**
@@ -1735,12 +1769,12 @@ Node\SourceFileNode
             return 0;
         }
         switch ($flags->kind) {
-        case TokenKind::AbstractKeyword:
-            return ast\flags\CLASS_ABSTRACT;
-        case TokenKind::FinalKeyword:
-            return ast\flags\CLASS_FINAL;
-        default:
-            throw new \InvalidArgumentException("Unexpected kind '" . Token::getTokenKindNameFromValue($flags->kind) . "'");
+            case TokenKind::AbstractKeyword:
+                return ast\flags\CLASS_ABSTRACT;
+            case TokenKind::FinalKeyword:
+                return ast\flags\CLASS_FINAL;
+            default:
+                throw new \InvalidArgumentException("Unexpected kind '" . Token::getTokenKindNameFromValue($flags->kind) . "'");
         }
     }
 
@@ -1854,11 +1888,14 @@ Node\SourceFileNode
     private static function phpParserNamespaceUseKindToASTUseFlags($kind) : int
     {
         switch ($kind ?? 0) {
-        case TokenKind::FunctionKeyword: return ast\flags\USE_FUNCTION;
-        case TokenKind::ConstKeyword: return ast\flags\USE_CONST;
-        case 0: return ast\flags\USE_NORMAL;
-        default:
-            throw new \InvalidArgumentException("Unexpected kind '" . Token::getTokenKindNameFromValue($kind ?? 0) . "'");
+            case TokenKind::FunctionKeyword:
+                return ast\flags\USE_FUNCTION;
+            case TokenKind::ConstKeyword:
+                return ast\flags\USE_CONST;
+            case 0:
+                return ast\flags\USE_NORMAL;
+            default:
+                throw new \InvalidArgumentException("Unexpected kind '" . Token::getTokenKindNameFromValue($kind ?? 0) . "'");
         }
     }
 
@@ -2071,7 +2108,7 @@ Node\SourceFileNode
                 'name' => self::phpParserNodeToAstNode($name_node->name),
                 'default' => $n->rightOperand ? self::phpParserNodeToAstNode($n->rightOperand) : null,
             ];
-        } else if ($n instanceof PhpParser\Node\Expression\Variable) {
+        } elseif ($n instanceof PhpParser\Node\Expression\Variable) {
             $children = [
                 'name' => self::tokenToString($n->name),
                 'default' => null,
@@ -2107,27 +2144,27 @@ Node\SourceFileNode
     {
         $ast_visibility = 0;
         foreach ($visibility as $token) {
-            switch($token->kind) {
-            case TokenKind::PublicKeyword:
-                $ast_visibility |= ast\flags\MODIFIER_PUBLIC;
-                break;
-            case TokenKind::ProtectedKeyword:
-                $ast_visibility |= ast\flags\MODIFIER_PROTECTED;
-                break;
-            case TokenKind::PrivateKeyword:
-                $ast_visibility |= ast\flags\MODIFIER_PRIVATE;
-                break;
-            case TokenKind::StaticKeyword:
-                $ast_visibility |= ast\flags\MODIFIER_STATIC;
-                break;
-            case TokenKind::AbstractKeyword:
-                $ast_visibility |= ast\flags\MODIFIER_ABSTRACT;
-                break;
-            case TokenKind::FinalKeyword:
-                $ast_visibility |= ast\flags\MODIFIER_FINAL;
-                break;
-            default:
-                throw new \RuntimeException("Unexpected visibility modifier '" . Token::getTokenKindNameFromValue($token->kind) . "'");
+            switch ($token->kind) {
+                case TokenKind::PublicKeyword:
+                    $ast_visibility |= ast\flags\MODIFIER_PUBLIC;
+                    break;
+                case TokenKind::ProtectedKeyword:
+                    $ast_visibility |= ast\flags\MODIFIER_PROTECTED;
+                    break;
+                case TokenKind::PrivateKeyword:
+                    $ast_visibility |= ast\flags\MODIFIER_PRIVATE;
+                    break;
+                case TokenKind::StaticKeyword:
+                    $ast_visibility |= ast\flags\MODIFIER_STATIC;
+                    break;
+                case TokenKind::AbstractKeyword:
+                    $ast_visibility |= ast\flags\MODIFIER_ABSTRACT;
+                    break;
+                case TokenKind::FinalKeyword:
+                    $ast_visibility |= ast\flags\MODIFIER_FINAL;
+                    break;
+                default:
+                    throw new \RuntimeException("Unexpected visibility modifier '" . Token::getTokenKindNameFromValue($token->kind) . "'");
             }
         }
         if ($automatically_add_public && !($ast_visibility & (ast\flags\MODIFIER_PUBLIC|ast\flags\MODIFIER_PROTECTED|ast\flags\MODIFIER_PRIVATE))) {
@@ -2205,7 +2242,6 @@ Node\SourceFileNode
         }
         $ast_declare_elements[] = $node;
         return new ast\Node(ast\AST_CONST_DECL, 0, $ast_declare_elements, $start_line);
-
     }
 
     /**
@@ -2276,7 +2312,6 @@ Node\SourceFileNode
         if (\count($comments) === 0) {
             return null;
         }
-
     }
 
     /**
@@ -2423,7 +2458,7 @@ Node\SourceFileNode
         $result = \trim($n->getText(self::$file_contents));
         $kind = $n->kind;
         if ($kind === TokenKind::VariableName) {
-            return \trim($result, '$');;
+            return \trim($result, '$');
         }
         return $result;
     }
@@ -2455,7 +2490,7 @@ Node\SourceFileNode
     {
         $nameParts = $name->nameParts;
         // TODO: Handle error case
-        return \implode('', \array_map(function(Token $token) : string {
+        return \implode('', \array_map(function (Token $token) : string {
             return \trim(self::tokenToString($token));
         }, $nameParts));
     }

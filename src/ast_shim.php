@@ -121,6 +121,7 @@ const AST_FOREACH = 1025;
 
 // AST FLAG CONSTANTS
 namespace ast\flags;
+
 const NAME_FQ = 0;
 const NAME_NOT_FQ = 1;
 const NAME_RELATIVE = 2;
@@ -212,6 +213,7 @@ const ARRAY_SYNTAX_SHORT = 3;
 // END AST FLAG CONSTANTS
 
 namespace ast;
+
 use ASTConverter\ASTConverter;
 
 if (!class_exists('\ast\Node')) {
@@ -219,35 +221,36 @@ if (!class_exists('\ast\Node')) {
  * This class describes a single node in a PHP AST.
  * @suppress PhanRedefineClassInternal
  */
-class Node
-{
-    /** @var int AST Node Kind. Values are one of ast\AST_* constants. */
-    public $kind;
+    class Node
+    {
+        /** @var int AST Node Kind. Values are one of ast\AST_* constants. */
+        public $kind;
 
-    /**
+        /**
      * @var int AST Flags.
      * Certain node kinds have flags that can be set.
      * These will be a bitfield of ast\flags\* constants.
      */
-    public $flags;
+        public $flags;
 
-    /** @var int Line the node starts in */
-    public $lineno;
+        /** @var int Line the node starts in */
+        public $lineno;
 
-    /** @var array Child nodes (may be empty) */
-    public $children;
-    /**
+        /** @var array Child nodes (may be empty) */
+        public $children;
+        /**
      * A constructor which validates data types but not the values themselves.
      * For backwards compatibility reasons, all values are optional and properties default to null
      * @suppress PhanTypeMismatchProperty
      */
-    public function __construct(int $kind = null, int $flags = null, array $children = null, int $lineno = null) {
-        $this->kind = $kind;
-        $this->flags = $flags;
-        $this->children = $children;
-        $this->lineno = $lineno;
+        public function __construct(int $kind = null, int $flags = null, array $children = null, int $lineno = null)
+        {
+            $this->kind = $kind;
+            $this->flags = $flags;
+            $this->children = $children;
+            $this->lineno = $lineno;
+        }
     }
-}
 }
 
 namespace ast\Node;
@@ -257,15 +260,15 @@ if (!class_exists('\ast\Node\Decl')) {
  * AST Node type for function and class declarations.
  * @suppress PhanRedefineClassInternal
  */
-class Decl extends \ast\Node
-{
-    /** @var int End line number of the declaration */
-    public $endLineno;
+    class Decl extends \ast\Node
+    {
+        /** @var int End line number of the declaration */
+        public $endLineno;
 
-    /** @var string Name of the function or class (not including the namespace prefix) */
-    public $name;
+        /** @var string Name of the function or class (not including the namespace prefix) */
+        public $name;
 
-    /** @var string|null Doc comment preceeding the declaration. null if no doc comment was used. */
-    public $docComment;
-}
+        /** @var string|null Doc comment preceeding the declaration. null if no doc comment was used. */
+        public $docComment;
+    }
 }

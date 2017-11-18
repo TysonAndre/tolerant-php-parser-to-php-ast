@@ -14,7 +14,8 @@ use Microsoft\PhpParser\Token;
  *
  * @author Tyson Andre
  */
-class FilePositionMap {
+class FilePositionMap
+{
     /** @var string */
     private $file_contents;
 
@@ -107,14 +108,14 @@ class FilePositionMap {
     {
         if ($offset < 0) {
             $offset = 0;
-        } else if ($offset >= $this->file_contents_length) {
+        } elseif ($offset >= $this->file_contents_length) {
             $offset = $this->file_contents_length;
         }
         $current_offset = $this->current_offset;
         if ($offset > $current_offset) {
             $this->line_for_current_offset += \substr_count($this->file_contents, "\n", $current_offset, $offset - $current_offset);
             $this->current_offset = $offset;
-        } else if ($offset < $this->current_offset) {
+        } elseif ($offset < $this->current_offset) {
             $this->line_for_current_offset -= \substr_count($this->file_contents, "\n", $offset, $current_offset - $offset);
             $this->current_offset = $offset;
         }

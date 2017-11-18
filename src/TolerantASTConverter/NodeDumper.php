@@ -32,7 +32,8 @@ use Microsoft\PhpParser\Parser;
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-class NodeDumper {
+class NodeDumper
+{
     /** @var string */
     private $file_contents;
     /** @var bool */
@@ -69,16 +70,17 @@ class NodeDumper {
         $this->indent = $indent;
     }
 
-    public function dumpClassName(Node $ast_node) : string {
+    public function dumpClassName(Node $ast_node) : string
+    {
         $name = get_class($ast_node);
-        if (stripos($name, 'Microsoft\\PhpParser\\') === 0)
-        {
+        if (stripos($name, 'Microsoft\\PhpParser\\') === 0) {
             $name = substr($name, 20);
         }
         return $name;
     }
 
-    public function dumpTokenClassName(Token $ast_node) : string {
+    public function dumpTokenClassName(Token $ast_node) : string
+    {
         $name = get_class($ast_node);
         if (stripos($name, 'Microsoft\\PhpParser\\') === 0) {
             $name = substr($name, 20);
@@ -91,7 +93,8 @@ class NodeDumper {
      * @param string $padding (to be echoed before the current node
      * @return string
      */
-    public function dumpTreeAsString($ast_node, string $key = '', string $padding = '') : string {
+    public function dumpTreeAsString($ast_node, string $key = '', string $padding = '') : string
+    {
         if ($ast_node instanceof Node) {
             $first_part = \sprintf(
                 "%s%s%s%s\n",
@@ -106,7 +109,7 @@ class NodeDumper {
                 $result[] = $this->dumpTreeAsString($child, $name, $padding . $this->indent);
             }
             return \implode('', $result);
-        } else if ($ast_node instanceof Token) {
+        } elseif ($ast_node instanceof Token) {
             return \sprintf(
                 "%s%s%s: %s%s%s: %s\n",
                 $padding,
@@ -117,7 +120,7 @@ class NodeDumper {
                 $this->include_offset ? ' (@' . $ast_node->start . ')' : '',
                 \json_encode(\substr($this->file_contents, $ast_node->fullStart, $ast_node->length))
             );
-        } else if (\is_scalar($ast_node) || $ast_node === null) {
+        } elseif (\is_scalar($ast_node) || $ast_node === null) {
             return \var_export($ast_node, true);
         } else {
             $type = is_object($ast_node) ? get_class($ast_node) : gettype($ast_node);

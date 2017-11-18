@@ -4,7 +4,8 @@ use ast\flags;
 
 const AST_DUMP_LINENOS = 1;
 
-function get_flag_info() : array {
+function get_flag_info() : array
+{
     static $exclusive, $combinable;
     if ($exclusive !== null) {
         return [$exclusive, $combinable];
@@ -142,14 +143,15 @@ function get_flag_info() : array {
     return [$exclusive, $combinable];
 }
 
-function format_flags(int $kind, int $flags) : string {
+function format_flags(int $kind, int $flags) : string
+{
     list($exclusive, $combinable) = get_flag_info();
     if (isset($exclusive[$kind])) {
         $flagInfo = $exclusive[$kind];
         if (isset($flagInfo[$flags])) {
             return "{$flagInfo[$flags]} ($flags)";
         }
-    } else if (isset($combinable[$kind])) {
+    } elseif (isset($combinable[$kind])) {
         $flagInfo = $combinable[$kind];
         $names = [];
         foreach ($flagInfo as $flag => $name) {
@@ -168,7 +170,8 @@ function format_flags(int $kind, int $flags) : string {
  * Dumps abstract syntax tree
  * @suppress PhanUndeclaredProperty
  */
-function ast_dump($ast, int $options = 0) : string {
+function ast_dump($ast, int $options = 0) : string
+{
     if ($ast instanceof ast\Node) {
         $kind = $ast->kind;
         // $kind can be invalid for placeholder nodes or unexpected tolerant-php-parser classes
@@ -199,9 +202,9 @@ function ast_dump($ast, int $options = 0) : string {
             $result .= "\n    children: INVALID (type=" . (\is_object($children) ? \get_class($children) : \gettype($children)) . ")";
         }
         return $result;
-    } else if ($ast === null) {
+    } elseif ($ast === null) {
         return 'null';
-    } else if (\is_scalar($ast)) {
+    } elseif (\is_scalar($ast)) {
         return \var_export($ast, true);
     } else {
         ob_start();
