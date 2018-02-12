@@ -36,7 +36,7 @@ if (!class_exists('\ast\Node')) {
  * each time they are invoked,
  * so it's possible to have multiple callers use this without affecting each other.
  *
- * Compatibility: PHP 7.1 (7.0 is planned)
+ * Compatibility: PHP 7.1
  *
  * ----------------------------------------------------------------------------
  *
@@ -1468,7 +1468,7 @@ Node\SourceFileNode
 
     private static function phpParserIncludeTokenToAstIncludeFlags(Token $type) : int
     {
-        $type_name = strtolower(self::tokenToString($type));
+        $type_name = \strtolower(self::tokenToString($type));
         switch ($type_name) {
             case 'include':
                 return ast\flags\EXEC_INCLUDE;
@@ -2494,9 +2494,11 @@ Node\SourceFileNode
     {
         $nameParts = $name->nameParts;
         // TODO: Handle error case
-        return \implode('', \array_map(function (Token $token) : string {
-            return \trim(self::tokenToString($token));
-        }, $nameParts));
+        $result = '';
+        foreach ($nameParts as $part) {
+            $result .= \trim(self::tokenToString($part));
+        }
+        return $result;
     }
 
     const _NODES_WITH_NULL_DOC_COMMENT = [
