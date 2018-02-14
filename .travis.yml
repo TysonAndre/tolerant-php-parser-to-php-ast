@@ -12,12 +12,13 @@ cache:
 before_install:
   - ./tests/setup.sh
 
-# TODO: reintroduce composer validate after phan 0.10.0 is released
 install:
   - composer install
+  - composer validate
 
+# Install phan separately because the tolerant-php-parser version may be behind.
 script:
-  - ./vendor/bin/phan
+  - composer.phar create-project phan/phan=0.10.4 ~/phan-install; ~/phan-install/phan
   - ./test
 
 branches:

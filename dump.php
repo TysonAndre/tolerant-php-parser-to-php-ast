@@ -28,9 +28,6 @@ if (file_exists(__DIR__ . "/../../../vendor/autoload.php")) {
 } else {
     require __DIR__ . "/vendor/autoload.php";
 }
-use Microsoft\PhpParser\DiagnosticsProvider;
-use Microsoft\PhpParser\Node;
-use Microsoft\PhpParser\Token;
 use Microsoft\PhpParser\Parser;
 use TolerantASTConverter\NodeDumper;
 
