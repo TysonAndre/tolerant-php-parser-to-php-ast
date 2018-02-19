@@ -119,6 +119,10 @@ final class TolerantASTConverter
         $this->instance_should_add_placeholders = $value;
     }
 
+    /**
+     * @param Diagnostic[] $errors @phan-output-reference
+     * @return \ast\Node
+     */
     public function parseCodeAsPHPAST(string $file_contents, int $version, array &$errors = null)
     {
         if (!\in_array($version, self::SUPPORTED_AST_VERSIONS)) {
@@ -1698,7 +1702,11 @@ Node\SourceFileNode
         return new ast\Node(ast\AST_CLOSURE_USES, 0, $ast_uses, $ast_uses[0]->lineno ?? $line);
     }
 
-    private static function resolveDocCommentForClosure(PhpParser\Node\Expression\AnonymousFunctionCreationExpression $node) {
+    /**
+     * @return ?string
+     */
+    private static function resolveDocCommentForClosure(PhpParser\Node\Expression\AnonymousFunctionCreationExpression $node)
+    {
         $doc_comment = $node->getDocCommentText();
         if ($doc_comment) {
             return $doc_comment;
@@ -1713,7 +1721,7 @@ Node\SourceFileNode
             }
             break;
         }
-
+        return null;
     }
 
     /**
