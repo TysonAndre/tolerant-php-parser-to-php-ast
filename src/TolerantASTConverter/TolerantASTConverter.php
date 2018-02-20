@@ -162,14 +162,14 @@ final class TolerantASTConverter
         if (!\in_array($ast_version, self::SUPPORTED_AST_VERSIONS)) {
             throw new \InvalidArgumentException(sprintf("Unexpected version: want %s, got %d", implode(', ', self::SUPPORTED_AST_VERSIONS), $ast_version));
         }
-        $this->startParsing($ast_version, $file_contents, $parser_node);
+        $this->startParsing($ast_version, $file_contents);
         $stmts = self::phpParserNodeToAstNode($parser_node);
         // return self::normalizeNamespaces($stmts);
         return $stmts;
     }
 
     /** @return void */
-    private function startParsing(int $ast_version, string $file_contents, PhpParser\Node $parser_node)
+    private function startParsing(int $ast_version, string $file_contents)
     {
         self::$ast_version = $ast_version;
         self::$decl_id = 0;
@@ -1012,6 +1012,7 @@ Node\SourceFileNode
             'Microsoft\PhpParser\Node\ClassConstDeclaration' => function (PhpParser\Node\ClassConstDeclaration $n, int $start_line) : ast\Node {
                 return self::phpParserClassConstToAstNode($n, $start_line);
             },
+            /** @suppress PhanPluginUnusedPublicFinalMethodArgument */
             'Microsoft\PhpParser\Node\MissingMemberDeclaration' => function (PhpParser\Node\MissingMemberDeclaration $n, int $start_line) {
                 // This node type is generated for something that isn't a function/constant/property. e.g. "public example();"
                 return null;
