@@ -4,6 +4,7 @@ namespace TolerantASTConverter;
 
 use ast;
 use Microsoft\PhpParser;
+use Microsoft\PhpParser\Diagnostic;
 use Microsoft\PhpParser\DiagnosticsProvider;
 use Microsoft\PhpParser\FilePositionMap;
 use Microsoft\PhpParser\MissingToken;
