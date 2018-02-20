@@ -203,6 +203,39 @@ EOT;
         $this->_testFallbackFromParser($incomplete_contents, $valid_contents, false);
     }
 
+    public function testMissingMember()
+    {
+        $incomplete_contents = <<<'EOT'
+<?php
+class Test {
+    public notAFunction() {}
+    public function aFunction() {}
+}
+EOT;
+        // This doesn't make sense, but it's a valid AST anyway.
+        // I doubt that this will ever be a common mistake
+        $valid_contents = <<<'EOT'
+<?php
+class Test {
+} notAFunction()[];
+function aFunction() {}
+EOT;
+        $this->_testFallbackFromParser($incomplete_contents, $valid_contents, false);
+    }
+
+    public function testEmptyConstList()
+    {
+        $incomplete_contents = <<<'EOT'
+<?php
+class Test { const X = ; }
+EOT;
+        $valid_contents = <<<'EOT'
+<?php
+class Test { }
+EOT;
+        $this->_testFallbackFromParser($incomplete_contents, $valid_contents, false);
+    }
+
     public function testMissingSemicolon()
     {
         $incomplete_contents = <<<'EOT'
@@ -283,6 +316,7 @@ EOT;
             $dumper->setIncludeOffset(true);
             $dump = $dumper->dumpTreeAsString($php_parser_node);
             $original_ast_dump = \ast_dump($ast);
+            $modified_ast_dump = \ast_dump($fallback_ast);
             // $parser_export = var_export($php_parser_node, true);
             $this->assertSame($original_ast_repr, $fallback_ast_repr, <<<EOT
 The fallback must return the same tree of php-ast nodes
@@ -295,6 +329,9 @@ $valid_contents
 
 Original AST:
 $original_ast_dump
+
+Fallback AST
+$modified_ast_dump
 
 Tolerant-PHP-Parser(simplified):
 $dump

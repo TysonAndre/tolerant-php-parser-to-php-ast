@@ -123,7 +123,7 @@ final class TolerantASTConverter
      * @param Diagnostic[] $errors @phan-output-reference
      * @return \ast\Node
      */
-    public function parseCodeAsPHPAST(string $file_contents, int $version, array &$errors = null)
+    public function parseCodeAsPHPAST(string $file_contents, int $version, array &$errors = [])
     {
         if (!\in_array($version, self::SUPPORTED_AST_VERSIONS)) {
             throw new \InvalidArgumentException(sprintf("Unexpected version: want %s, got %d", \implode(', ', self::SUPPORTED_AST_VERSIONS), $version));
@@ -1011,6 +1011,10 @@ Node\SourceFileNode
             'Microsoft\PhpParser\Node\ClassConstDeclaration' => function (PhpParser\Node\ClassConstDeclaration $n, int $start_line) : ast\Node {
                 return self::phpParserClassConstToAstNode($n, $start_line);
             },
+            'Microsoft\PhpParser\Node\MissingMemberDeclaration' => function (PhpParser\Node\MissingMemberDeclaration $n, int $start_line) {
+                // This node type is generated for something that isn't a function/constant/property. e.g. "public example();"
+                return null;
+            },
             'Microsoft\PhpParser\Node\MethodDeclaration' => function (PhpParser\Node\MethodDeclaration $n, int $start_line) : ast\Node {
                 $statements = $n->compoundStatementOrSemicolon;
                 $return_type = self::phpParserTypeToAstNode($n->returnType, self::getEndLine($n->returnType) ?: $start_line);
@@ -1260,7 +1264,7 @@ Node\SourceFileNode
                         assert($select_or_alias_clause instanceof PhpParser\Node\TraitSelectOrAliasClause);
                         $adaptations_inner[] = self::phpParserNodeToAstNode($select_or_alias_clause);
                     }
-                    $adaptations = new ast\Node(ast\AST_TRAIT_ADAPTATIONS, 0, $adaptations_inner, $adaptations_inner[0]->lineno ?: $start_line);
+                    $adaptations = new ast\Node(ast\AST_TRAIT_ADAPTATIONS, 0, $adaptations_inner, $adaptations_inner[0]->lineno ?? $start_line);
                 } else {
                     $adaptations = null;
                 }
@@ -2229,7 +2233,7 @@ Node\SourceFileNode
         }
         $flags = self::phpParserVisibilityToAstVisibility($n->modifiers);
 
-        return new ast\Node(ast\AST_CLASS_CONST_DECL, $flags, $const_elems, $const_elems[0]->lineno ?: $start_line);
+        return new ast\Node(ast\AST_CLASS_CONST_DECL, $flags, $const_elems, $const_elems[0]->lineno ?? $start_line);
     }
 
     private static function phpParserConstToAstNode(PhpParser\Node\Statement\ConstDeclaration $n, int $start_line) : ast\Node
@@ -2244,7 +2248,7 @@ Node\SourceFileNode
             $const_elems[] = self::phpParserConstelemToAstConstelem($prop, $i === 0 ? $doc_comment : null);
         }
 
-        return new ast\Node(ast\AST_CONST_DECL, 0, $const_elems, $const_elems[0]->lineno ?: $start_line);
+        return new ast\Node(ast\AST_CONST_DECL, 0, $const_elems, $const_elems[0]->lineno ?? $start_line);
     }
 
     /**
