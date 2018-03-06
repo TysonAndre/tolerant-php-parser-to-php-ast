@@ -283,17 +283,11 @@ EOT;
 
     private function _testFallbackFromParser(string $incomplete_contents, string $valid_contents, bool $should_add_placeholders = false)
     {
-        $supports40 = ConversionTest::hasNativeASTSupport(40);
         $supports50 = ConversionTest::hasNativeASTSupport(50);
-        if (!($supports40 || $supports50)) {
+        if (!$supports50) {
             $this->fail('No supported AST versions to test');
         }
-        if ($supports40) {
-            $this->_testFallbackFromParserForASTVersion($incomplete_contents, $valid_contents, 40, $should_add_placeholders);
-        }
-        if ($supports50) {
-            $this->_testFallbackFromParserForASTVersion($incomplete_contents, $valid_contents, 50, $should_add_placeholders);
-        }
+        $this->_testFallbackFromParserForASTVersion($incomplete_contents, $valid_contents, 50, $should_add_placeholders);
     }
 
     private function _testFallbackFromParserForASTVersion(string $incomplete_contents, string $valid_contents, int $ast_version, bool $should_add_placeholders)

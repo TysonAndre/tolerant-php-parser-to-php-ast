@@ -48,6 +48,8 @@ class ConversionTest extends \PHPUnit\Framework\TestCase
     }
 
     /**
+     * This is used to sort by token count, so that the failures with the fewest token
+     * (i.e. simplest ASTs) appear first.
      * @param string[] $files
      * @return void
      */
@@ -63,6 +65,8 @@ class ConversionTest extends \PHPUnit\Framework\TestCase
     }
 
     /**
+     * Asserts that valid files get parsed the same way by php-ast and the polyfill.
+     *
      * @return string[]|int[] [string $file_path, int $ast_version]
      * @suppress PhanPluginUnusedVariable
      */
@@ -73,22 +77,12 @@ class ConversionTest extends \PHPUnit\Framework\TestCase
         $paths = $this->_scanSourceDirForPHP($source_dir);
 
         self::sortByTokenCount($paths);
-        $supports40 = self::hasNativeASTSupport(40);
-        $supports45 = self::hasNativeASTSupport(45);
         $supports50 = self::hasNativeASTSupport(50);
-        if (!($supports40 || $supports45 || $supports50)) {
-            throw new RuntimeException("None of version 40, 45 or 50 are natively supported");
+        if (!$supports50) {
+            throw new RuntimeException("Version 50 is not natively supported");
         }
         foreach ($paths as $path) {
-            if ($supports40) {
-                $tests[] = [$path, 40];
-            }
-            if ($supports45) {
-                $tests[] = [$path, 45];
-            }
-            if ($supports50) {
-                $tests[] = [$path, 50];
-            }
+            $tests[] = [$path, 50];
         }
         return $tests;
     }
@@ -144,6 +138,7 @@ class ConversionTest extends \PHPUnit\Framework\TestCase
         self::normalizeOriginalAST($ast);
         $this->assertInstanceOf('\ast\Node', $ast, 'Examples must be syntactically valid PHP parseable by php-ast');
         $converter = new TolerantASTConverter();
+        $converter->setPHPVersionId(PHP_VERSION_ID);
         try {
             $fallback_ast = $converter->parseCodeAsPHPAST($contents, $ast_version);
         } catch (\Throwable $e) {
