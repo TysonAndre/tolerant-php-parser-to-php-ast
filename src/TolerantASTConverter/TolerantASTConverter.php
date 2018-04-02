@@ -33,7 +33,7 @@ if (!class_exists('\ast\Node')) {
  * This is implemented as a collection of static methods for performance,
  * but functionality is provided through instance methods.
  * (The private methods may become instance methods if the performance impact is negligible
- * in Zend PHP and HHVM)
+ * in PHP and HHVM)
  *
  * The instance methods set all of the options (static variables)
  * each time they are invoked,
@@ -67,6 +67,10 @@ if (!class_exists('\ast\Node')) {
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
+ *
+ * @phan-file-suppress PhanPartialTypeMismatchArgument
+ * @phan-file-suppress PhanPossiblyNullTypeReturn
+ * @phan-file-suppress PhanPartialTypeMismatchReturn
  */
 final class TolerantASTConverter
 {
@@ -107,6 +111,9 @@ final class TolerantASTConverter
     /** @var FilePositionMap */
     private static $file_position_map;
 
+    /** @var bool */
+    private static $parse_all_doc_comments = false;
+
     /** @var bool Sets equivalent static option in self::_start_parsing() */
     private $instance_should_add_placeholders = false;
 
@@ -115,6 +122,11 @@ final class TolerantASTConverter
      * Set to a newer version to support comments on class constants, etc.
      */
     private $instance_php_version_id_parsing = PHP_VERSION_ID;
+
+    /**
+     * @var bool can be used to force all doc comments to be parsed
+     */
+    private $instance_parse_all_doc_comments = false;
 
     // No-op.
     public function __construct()
@@ -131,6 +143,15 @@ final class TolerantASTConverter
     public function setPHPVersionId(int $value)
     {
         $this->instance_php_version_id_parsing = $value;
+    }
+
+    /**
+     * Parse all doc comments, even the ones the current php version's php-ast would be incapable of providing.
+     * @return void
+     */
+    public function setParseAllDocComments(bool $value)
+    {
+        $this->instance_parse_all_doc_comments = $value;
     }
 
     /**
@@ -166,24 +187,26 @@ final class TolerantASTConverter
      * @param int $ast_version
      * @param string $file_contents
      * @return ast\Node
+     * @suppress PhanPartialTypeMismatchReturn this should always be passed a statement list
      */
     public function phpParserToPhpast(PhpParser\Node $parser_node, int $ast_version, string $file_contents)
     {
         if (!\in_array($ast_version, self::SUPPORTED_AST_VERSIONS)) {
             throw new \InvalidArgumentException(sprintf("Unexpected version: want %s, got %d", implode(', ', self::SUPPORTED_AST_VERSIONS), $ast_version));
         }
-        $this->startParsing($file_contents, $parser_node);
+        $this->startParsing($file_contents);
         $stmts = self::phpParserNodeToAstNode($parser_node);
         // return self::normalizeNamespaces($stmts);
         return $stmts;
     }
 
     /** @return void */
-    private function startParsing(string $file_contents, PhpParser\Node $parser_node)
+    private function startParsing(string $file_contents)
     {
         self::$decl_id = 0;
         self::$should_add_placeholders = $this->instance_should_add_placeholders;
         self::$php_version_id_parsing = $this->instance_php_version_id_parsing;
+        self::$parse_all_doc_comments = $this->instance_parse_all_doc_comments;
         self::$file_position_map = new FilePositionMap($file_contents);
         // $file_contents required for looking up line numbers.
         // TODO: Other data structures?
@@ -542,7 +565,7 @@ final class TolerantASTConverter
                 $return_type_line = self::getEndLine($n->returnType) ?: $start_line;
                 $return_type = self::phpParserTypeToAstNode($n->returnType, $return_type_line);
                 if ($n->questionToken !== null) {
-                    $return_type = new ast\Node(ast\AST_NULLABLE_TYPE, 0, ['type' => $ast_return_type], $return_type_line);
+                    $return_type = new ast\Node(ast\AST_NULLABLE_TYPE, 0, ['type' => $return_type], $return_type_line);
                 }
                 return self::astDeclClosure(
                     $n->byRefToken !== null,
@@ -815,13 +838,13 @@ final class TolerantASTConverter
                         throw new \RuntimeException("Invalid yield expression kind {$n->yieldOrYieldFromKeyword->kind}");
                 }
                 $array_element = $n->arrayElement;
-                $element_value = $array_element->elementValue;
+                $elementValue = $array_element->elementValue ?? null;
                 // Workaround for <= 0.0.5
-                $ast_expr = ($element_value !== null && !($element_value instanceof MissingToken)) ? self::phpParserNodeToAstNode($array_element->elementValue) : null;
+                $ast_expr = ($elementValue !== null && !($elementValue instanceof MissingToken)) ? self::phpParserNodeToAstNode($elementValue) : null;
                 if ($kind === \ast\AST_YIELD) {
                     $children = [
                         'value' => $ast_expr,
-                        'key' => $array_element->elementKey   !== null ? self::phpParserNodeToAstNode($array_element->elementKey) : null,
+                        'key' => ($array_element->elementKey ?? null) !== null ? self::phpParserNodeToAstNode($array_element->elementKey) : null,
                     ];
                 } else {
                     $children = [
@@ -933,7 +956,8 @@ final class TolerantASTConverter
              * @suppress PhanTypeMismatchArgument incorrect phpdoc for breakoutLevel
              */
             'Microsoft\PhpParser\Node\Statement\BreakOrContinueStatement' => function (PhpParser\Node\Statement\BreakOrContinueStatement $n, int $start_line) : ast\Node {
-                switch ($n->breakOrContinueKeyword->kind) {
+                $raw_kind = $n->breakOrContinueKeyword->kind;
+                switch ($raw_kind) {
                     case TokenKind::BreakKeyword:
                         $kind = ast\AST_BREAK;
                         break;
@@ -941,7 +965,7 @@ final class TolerantASTConverter
                         $kind = ast\AST_CONTINUE;
                         break;
                     default:
-                        throw new \InvalidArgumentException("Invalid BreakOrContinueStatement token $kind");
+                        throw new \InvalidArgumentException("Invalid BreakOrContinueStatement token $raw_kind");
                 }
                 return new ast\Node($kind, 0, ['depth' => isset($n->breakoutLevel) ? (int)self::phpParserNodeToAstNode($n->breakoutLevel) : null], $start_line);
             },
@@ -999,7 +1023,7 @@ final class TolerantASTConverter
             'Microsoft\PhpParser\Node\ClassConstDeclaration' => function (PhpParser\Node\ClassConstDeclaration $n, int $start_line) : ast\Node {
                 return self::phpParserClassConstToAstNode($n, $start_line);
             },
-            'Microsoft\PhpParser\Node\MissingMemberDeclaration' => function (PhpParser\Node\MissingMemberDeclaration $n, int $start_line) {
+            'Microsoft\PhpParser\Node\MissingMemberDeclaration' => function (PhpParser\Node\MissingMemberDeclaration $unused_n, int $unused_start_line) {
                 // This node type is generated for something that isn't a function/constant/property. e.g. "public example();"
                 return null;
             },
@@ -1327,6 +1351,10 @@ final class TolerantASTConverter
             'Microsoft\PhpParser\Node\Expression\UnsetIntrinsicExpression' => function (PhpParser\Node\Expression\UnsetIntrinsicExpression $n, int $start_line) {
                 $stmts = [];
                 foreach ($n->expressions->children as $var) {
+                    if ($var instanceof Token) {
+                        // Skip over ',' and invalid tokens
+                        continue;
+                    }
                     $stmts[] = new ast\Node(ast\AST_UNSET, 0, ['var' => self::phpParserNodeToAstNode($var)], self::getEndLine($var) ?: $start_line);
                 }
                 return \count($stmts) === 1 ? $stmts[0] : $stmts;
@@ -2172,18 +2200,12 @@ final class TolerantASTConverter
     private static function phpParserConstelemToAstConstelem(PhpParser\Node\ConstElement $n, $doc_comment) : ast\Node
     {
         $start_line = self::getStartLine($n);
-        if (self::$php_version_id_parsing >= 70100) {
-            $doc_comment = self::extractPhpdocComment($n) ?: $doc_comment;
-        } else {
-            $doc_comment = null;
-        }
-
         $children = [
             'name' => self::variableTokenToString($n->name),
             'value' => self::phpParserNodeToAstNode($n->assignment),
         ];
 
-        if (self::$php_version_id_parsing >= 70100) {
+        if (self::$php_version_id_parsing >= 70100 || self::$parse_all_doc_comments) {
             $children['docComment'] = self::extractPhpdocComment($n) ?? $doc_comment;
         }
         return new ast\Node(ast\AST_CONST_ELEM, 0, $children, $start_line);
@@ -2225,6 +2247,9 @@ final class TolerantASTConverter
         return $ast_visibility;
     }
 
+    /**
+     * @suppress PhanTypeMismatchArgument casting to a more specific node
+     */
     private static function phpParserPropertyToAstNode(PhpParser\Node\PropertyDeclaration $n, int $start_line) : ast\Node
     {
         $prop_elems = [];
@@ -2241,15 +2266,18 @@ final class TolerantASTConverter
         return new ast\Node(ast\AST_PROP_DECL, $flags, $prop_elems, $prop_elems[0]->lineno ?? (self::getStartLine($n) ?: $start_line));
     }
 
+    /**
+     * @suppress PhanTypeMismatchArgument casting to something more specific
+     */
     private static function phpParserClassConstToAstNode(PhpParser\Node\ClassConstDeclaration $n, int $start_line) : ast\Node
     {
         $const_elems = [];
         $doc_comment = $n->getDocCommentText();
-        foreach ($n->constElements->children ?? [] as $i => $prop) {
-            if ($prop instanceof Token) {
+        foreach ($n->constElements->children ?? [] as $i => $const_elem) {
+            if ($const_elem instanceof Token) {
                 continue;
             }
-            $const_elems[] = self::phpParserConstelemToAstConstelem($prop, $i === 0 ? $doc_comment : null);
+            $const_elems[] = self::phpParserConstelemToAstConstelem($const_elem, $i === 0 ? $doc_comment : null);
         }
         $flags = self::phpParserVisibilityToAstVisibility($n->modifiers);
 
@@ -2283,7 +2311,7 @@ final class TolerantASTConverter
         ];
         $doc_comment = self::extractPhpdocComment($declare) ?? $first_doc_comment;
         // $first_doc_comment = null;
-        if (self::$php_version_id_parsing >= 70100) {
+        if (self::$php_version_id_parsing >= 70100 || self::$parse_all_doc_comments) {
             $children['docComment'] = $doc_comment;
         }
         $node = new ast\Node(ast\AST_CONST_ELEM, 0, $children, self::getStartLine($declare));
@@ -2451,7 +2479,6 @@ final class TolerantASTConverter
     }
 
     /**
-     * @suppress PhanAccessMethodInternal
      * @return int|string|float|bool|null
      */
     private static function tokenToScalar(Token $n)
@@ -2469,9 +2496,6 @@ final class TolerantASTConverter
         return String_::parse($str);
     }
 
-    /**
-     * @suppress PhanAccessMethodInternal
-     */
     private static function parseQuotedString(PhpParser\Node\StringLiteral $n) : string
     {
         $start = $n->getStart();
@@ -2479,6 +2503,9 @@ final class TolerantASTConverter
         return String_::parse($text);
     }
 
+    /**
+     * @suppress PhanPartialTypeMismatchArgumentInternal hopefully in range
+     */
     private static function variableTokenToString(Token $n) : string
     {
         return \ltrim(\trim($n->getText(self::$file_contents)), '$');
@@ -2502,7 +2529,9 @@ final class TolerantASTConverter
     ];
 
     // FIXME don't use in places expecting non-strings.
-    /** @return string */
+    /**
+     * @phan-suppress PhanPartialTypeMismatchArgumentInternal hopefully in range
+     */
     private static function tokenToString(Token $n) : string
     {
         $result = \trim($n->getText(self::$file_contents));
@@ -2523,6 +2552,7 @@ final class TolerantASTConverter
             'const' => $name,
         ], $start_line);
     }
+
 
     /**
      * @return string

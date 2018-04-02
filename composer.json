@@ -10,16 +10,19 @@
             "name": "Tyson Andre"
         }
     ],
+    "config": {
+        "sort-packages": true
+    },
     "require": {
         "php": ">=7.0",
-        "Microsoft/tolerant-php-parser": "0.0.9"
+        "Microsoft/tolerant-php-parser": "0.0.10"
     },
     "require-dev": {
         "phpunit/phpunit": "^6.4"
     },
     "suggest": {
         "ext-ast": "~0.1.5",
-        "phan/phan": "~0.8.12"
+        "phan/phan": "~0.12.4"
     },
     "autoload": {
         "psr-4": {"TolerantASTConverter\\": "src/TolerantASTConverter"}
