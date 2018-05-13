@@ -681,7 +681,7 @@ final class TolerantASTConverter
             },
             'Microsoft\PhpParser\Node\Expression\IssetIntrinsicExpression' => function (PhpParser\Node\Expression\IssetIntrinsicExpression $n, int $start_line) : ast\Node {
                 $ast_issets = [];
-                foreach ($n->expressions->children as $var) {
+                foreach ($n->expressions->children ?? [] as $var) {
                     if ($var instanceof Token && $var->kind === TokenKind::CommaToken) {
                         continue;
                     }
@@ -1078,7 +1078,7 @@ final class TolerantASTConverter
              */
             'Microsoft\PhpParser\Node\Expression\EchoExpression' => function (PhpParser\Node\Expression\EchoExpression $n, int $start_line) {
                 $ast_echos = [];
-                foreach ($n->expressions->children as $expr) {
+                foreach ($n->expressions->children ?? [] as $expr) {
                     if ($expr instanceof Token && $expr->kind === TokenKind::CommaToken) {
                         continue;
                     }
@@ -1293,8 +1293,8 @@ final class TolerantASTConverter
             'Microsoft\PhpParser\Node\TraitSelectOrAliasClause' => function (PhpParser\Node\TraitSelectOrAliasClause $n, int $start_line) : ast\Node {
                 // FIXME targetName phpdoc is wrong.
                 $name = $n->name;
-                $target_name = $n->targetName;
                 if ($n->asOrInsteadOfKeyword->kind === TokenKind::InsteadOfKeyword) {
+                    $target_name_list = array_merge([$n->targetName], $n->remainingTargetNames ?? []);
                     $member_name_list = $name->memberName;
                     if (\is_object($member_name_list)) {
                         $member_name_list = [$member_name_list];
@@ -1302,12 +1302,11 @@ final class TolerantASTConverter
                     // Trait::y insteadof OtherTrait
                     $trait_node = self::phpParserNonValueNodeToAstNode($name->scopeResolutionQualifier);
                     $method_node = self::phpParserNameListToAstNameList($member_name_list, $start_line);
-                    $target_node = self::phpParserNonValueNodeToAstNode($target_name);
+                    $target_node = self::phpParserNameListToAstNameList($target_name_list, $start_line);
                     $outer_method_node = new ast\Node(ast\AST_METHOD_REFERENCE, 0, [
                         'class' => $trait_node,
                         'method' => $method_node->children[0]
                     ], $start_line);
-                    $target_node = new ast\Node(ast\AST_NAME_LIST, 0, [$target_node], $start_line);
 
                     assert(\count($member_name_list) === 1);  // TODO: can this be simplified?
                     $children = [
@@ -1324,6 +1323,7 @@ final class TolerantASTConverter
                         $method_node = self::phpParserNameToString($name);
                     }
                     $flags = self::phpParserVisibilityToAstVisibility($n->modifiers, false);
+                    $target_name = $n->targetName;
                     $target_name = $target_name !== null ? self::phpParserNameToString($target_name) : null;
                     $children = [
                         'method' => new ast\Node(ast\AST_METHOD_REFERENCE, 0, [
@@ -1350,7 +1350,7 @@ final class TolerantASTConverter
             /** @return ast\Node|ast\Node[] */
             'Microsoft\PhpParser\Node\Expression\UnsetIntrinsicExpression' => function (PhpParser\Node\Expression\UnsetIntrinsicExpression $n, int $start_line) {
                 $stmts = [];
-                foreach ($n->expressions->children as $var) {
+                foreach ($n->expressions->children ?? [] as $var) {
                     if ($var instanceof Token) {
                         // Skip over ',' and invalid tokens
                         continue;
@@ -2288,7 +2288,7 @@ final class TolerantASTConverter
     {
         $const_elems = [];
         $doc_comment = $n->getDocCommentText();
-        foreach ($n->constElements->children as $i => $prop) {
+        foreach ($n->constElements->children ?? [] as $i => $prop) {
             if ($prop instanceof Token) {
                 continue;
             }
@@ -2552,7 +2552,6 @@ final class TolerantASTConverter
             'const' => $name,
         ], $start_line);
     }
-
 
     /**
      * @return string

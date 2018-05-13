@@ -15,7 +15,7 @@
     },
     "require": {
         "php": ">=7.0",
-        "Microsoft/tolerant-php-parser": "0.0.10"
+        "Microsoft/tolerant-php-parser": "0.0.11"
     },
     "require-dev": {
         "phpunit/phpunit": "^6.4"
