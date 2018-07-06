@@ -257,6 +257,7 @@ if (!class_exists('\ast\Node\Decl')) {
 /**
  * AST Node type for function and class declarations.
  * @suppress PhanRedefineClassInternal
+ * @suppress PhanRedefinedExtendedClass
  */
     class Decl extends \ast\Node
     {
