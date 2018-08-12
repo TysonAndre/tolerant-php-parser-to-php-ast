@@ -46,7 +46,7 @@ use Error;
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-final class String_
+final class StringUtil
 {
     const REPLACEMENTS = [
         '\\' => '\\',
@@ -65,25 +65,28 @@ final class String_
      * Parses a string token.
      *
      * @param string $str String token content
-     * @param bool $parseUnicodeEscape Whether to parse PHP 7 \u escapes
+     * @param bool $parse_unicode_escape Whether to parse PHP 7 \u escapes
      *
      * @return string The parsed string
      */
-    public static function parse(string $str, bool $parseUnicodeEscape = true) : string {
-        $bLength = 0;
+    public static function parse(string $str, bool $parse_unicode_escape = true) : string
+    {
+        $binary_length = 0;
         if ('b' === $str[0] || 'B' === $str[0]) {
-            $bLength = 1;
+            $binary_length = 1;
         }
 
-        if ('\'' === $str[$bLength]) {
+        if ('\'' === $str[$binary_length]) {
             return \str_replace(
                 ['\\\\', '\\\''],
                 ['\\', '\''],
-                \substr($str, $bLength + 1, -1)
+                \substr($str, $binary_length + 1, -1)
             );
         } else {
             return self::parseEscapeSequences(
-                substr($str, $bLength + 1, -1), '"', $parseUnicodeEscape
+                substr($str, $binary_length + 1, -1),
+                '"',
+                $parse_unicode_escape
             );
         }
     }
@@ -95,23 +98,24 @@ final class String_
      *
      * @param string      $str   String without quotes
      * @param null|string $quote Quote type
-     * @param bool $parseUnicodeEscape Whether to parse PHP 7 \u escapes
+     * @param bool $parse_unicode_escape Whether to parse PHP 7 \u escapes
      *
      * @return string String with escape sequences parsed
      */
-    public static function parseEscapeSequences(string $str, $quote, bool $parseUnicodeEscape = true) : string {
+    public static function parseEscapeSequences(string $str, $quote, bool $parse_unicode_escape = true) : string
+    {
         if (null !== $quote) {
             $str = \str_replace('\\' . $quote, $quote, $str);
         }
 
         $extra = '';
-        if ($parseUnicodeEscape) {
+        if ($parse_unicode_escape) {
             $extra = '|u\{([0-9a-fA-F]+)\}';
         }
 
         return \preg_replace_callback(
             '~\\\\([\\\\$nrtfve]|[xX][0-9a-fA-F]{1,2}|[0-7]{1,3}' . $extra . ')~',
-            function($matches) {
+            function ($matches) {
                 $str = $matches[1];
 
                 if (isset(self::REPLACEMENTS[$str])) {
@@ -134,22 +138,24 @@ final class String_
      * @param int $num Code point
      *
      * @return string UTF-8 representation of code point
+     *
+     * @throws \Error for invalid code points
      */
-    private static function codePointToUtf8(int $num) : string {
+    private static function codePointToUtf8(int $num) : string
+    {
         if ($num <= 0x7F) {
             return chr($num);
         }
         if ($num <= 0x7FF) {
-            return chr(($num>>6) + 0xC0) . chr(($num&0x3F) + 0x80);
+            return chr(($num >> 6) + 0xC0) . chr(($num & 0x3F) + 0x80);
         }
         if ($num <= 0xFFFF) {
-            return chr(($num>>12) + 0xE0) . chr((($num>>6)&0x3F) + 0x80) . chr(($num&0x3F) + 0x80);
+            return chr(($num >> 12) + 0xE0) . chr((($num >> 6) & 0x3F) + 0x80) . chr(($num & 0x3F) + 0x80);
         }
         if ($num <= 0x1FFFFF) {
-            return chr(($num>>18) + 0xF0) . chr((($num>>12)&0x3F) + 0x80)
-                 . chr((($num>>6)&0x3F) + 0x80) . chr(($num&0x3F) + 0x80);
+            return chr(($num >> 18) + 0xF0) . chr((($num >> 12) & 0x3F) + 0x80)
+                 . chr((($num >> 6) & 0x3F) + 0x80) . chr(($num & 0x3F) + 0x80);
         }
         throw new Error('Invalid UTF-8 codepoint escape sequence: Codepoint too large');
     }
-
 }

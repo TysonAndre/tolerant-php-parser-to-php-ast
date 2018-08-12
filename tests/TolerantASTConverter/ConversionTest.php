@@ -42,7 +42,7 @@ class ConversionTest extends \PHPUnit\Framework\TestCase
         try {
             ast\parse_code('', $ast_version);
             return true;
-        } catch (\LogicException $e) {
+        } catch (\LogicException $_) {
             return false;
         }
     }

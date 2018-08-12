@@ -63,6 +63,10 @@ return [
     // to make sense of.
     'dead_code_detection' => false,
 
+    // Set to true in order to attempt to detect unused variables.
+    // dead_code_detection will also enable unused variable detection.
+    'unused_variable_detection' => true,
+
     // Run a quick version of checks that takes less
     // time
     "quick_mode" => false,
@@ -226,7 +230,7 @@ return [
     ],
 
     // A list of plugin files to execute
-    'plugins' => array_merge([
+    'plugins' => [
         'AlwaysReturnPlugin',
         'DollarDollarPlugin',
         'UnreachableCodePlugin',
@@ -234,5 +238,5 @@ return [
         'DuplicateArrayKeyPlugin',
         'PregRegexCheckerPlugin',
         'PrintfCheckerPlugin',
-    ], file_exists(__DIR__ . '/plugins/UnusedVariablePlugin.php') ? [__DIR__ . '/plugins/UnusedVariablePlugin.php'] : []),
+    ],
 ];
