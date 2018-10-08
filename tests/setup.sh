@@ -1,68 +1,48 @@
 #!/usr/bin/env bash
-# php-ast installation and configuration script, taken from Etsy/Phan
+# php-ast installation and configuration script, taken from https://github.com/phan/phan
+# NOTE: You may want to replace all of this with `pecl install ast` or `pecl install ast-0.1.7`
+# in your own scripts to ensure stable versions are installed instead of development versions.
+set -xeu
 
-function build {
-    phpize
-    ./configure
-    make
-}
-
-function cleanBuild {
-    make clean
-    build
-}
-
-function install {
-    make install
-    echo "extension=ast.so" >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
-}
-
-# Ensure the build directory exists
-[[ -d "build" ]] || mkdir build
-
-# Ensure that the PHP version hasn't changed under us. If it has, we'll have to
-# rebuild the extension.
-if [[ -e "build/phpversion.txt" ]]; then
-  if ! diff -q build/phpversion.txt <(php -r "echo PHP_VERSION_ID;"); then
-    # Something has changed, so nuke the build/ast directory if it exists.
-    echo "New version of PHP detected. Removing build/ast so we can do a fresh build."
-    rm -rf build/ast
-  fi
+if [[ "x$TRAVIS" == "x" ]]; then
+    echo "This should only be run in travis"
+    exit 1
 fi
 
-# Ensure that we have a copy of the ast extension source code.
-if [[ ! -e "build/ast/config.m4" ]]; then
-    # If build/ast exists, but build/ast/config.m4 doesn't, nuke it and start over.
-    [[ ! -d "build/ast" ]] || rm -rf build/ast
-    git clone --depth 1 https://github.com/nikic/php-ast.git build/ast
+# Ensure the build directory exist
+PHP_VERSION_ID=$(php -r "echo PHP_VERSION_ID;")
+PHAN_BUILD_DIR="$HOME/.cache/phan-ast-build"
+EXPECTED_AST_FILE="$PHAN_BUILD_DIR/build/php-ast-$PHP_VERSION_ID.so"
+
+[[ -d "$PHAN_BUILD_DIR" ]] || mkdir -p "$PHAN_BUILD_DIR"
+
+cd "$PHAN_BUILD_DIR"
+
+if [[ ! -e "$EXPECTED_AST_FILE" ]]; then
+  echo "No cached extension found. Building..."
+  rm -rf php-ast build
+  mkdir build
+
+  git clone --depth 1 https://github.com/nikic/php-ast.git php-ast
+
+  export CFLAGS="-O3"
+  pushd php-ast
+  # Install the ast extension
+  phpize
+  ./configure
+  make
+
+  cp modules/ast.so "$EXPECTED_AST_FILE"
+  popd
+else
+  echo "Using cached extension."
 fi
 
-# Install the ast extension
-pushd ./build/ast
-  # If we don't have ast.so, we have to build it.
-  if [[ ! -e "modules/ast.so" ]]; then
-      echo "No cached extension found. Building..."
-      build
-  else
-      # If there are new commits, we need to rebuild the extension.
-      git fetch origin master
-      newCommits=$(git rev-list HEAD...origin/master --count)
-      if [[ "$newCommits" != "0" ]]; then
-          echo "New commits found upstream. Updating and rebuilding..."
-          git pull origin master
-          cleanBuild
-      else
-          echo "Using cached extension."
-      fi
-  fi
+echo "extension=$EXPECTED_AST_FILE" >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
 
-  # No matter what, we still have to move the .so into place and enable it.
-  install
-popd
-
-# Note the PHP version for later builds.
-php -r "echo PHP_VERSION_ID;" > build/phpversion.txt
+php -r 'function_exists("ast\parse_code") || (print("Failed to enable php-ast\n") && exit(1));'
 
 # Disable xdebug, since we aren't currently gathering code coverage data and
 # having xdebug slows down Composer a bit.
-phpenv config-rm xdebug.ini
+# TODO(optional): Once xdebug is enabled for PHP 7.3 on Travis, get rid of the '|| true'
+phpenv config-rm xdebug.ini || true

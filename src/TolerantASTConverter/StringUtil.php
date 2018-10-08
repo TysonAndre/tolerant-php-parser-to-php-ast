@@ -2,11 +2,10 @@
 
 namespace TolerantASTConverter;
 
+use Error;
 use function chr;
 use function hexdec;
 use function octdec;
-
-use Error;
 
 /**
  * This class is based on code from https://github.com/nikic/PHP-Parser/blob/master/lib/PhpParser/Node/Scalar/String_.php

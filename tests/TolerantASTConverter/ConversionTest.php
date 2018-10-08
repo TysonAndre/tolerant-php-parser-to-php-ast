@@ -2,14 +2,12 @@
 
 namespace TolerantASTConverter\Tests;
 
-use TolerantASTConverter\TolerantASTConverter;
-use TolerantASTConverter\NodeDumper;
-
+use ast;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use RuntimeException;
-
-use ast;
+use TolerantASTConverter\NodeDumper;
+use TolerantASTConverter\TolerantASTConverter;
 
 require_once __DIR__ . '/../../src/util.php';
 

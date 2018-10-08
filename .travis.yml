@@ -4,10 +4,14 @@ php:
   - 7.0
   - 7.1
   - 7.2
+  - 7.3
+
+dist: xenial
 
 cache:
   directories:
     - $HOME/.composer/cache
+    - $HOME/.cache/phan-ast/build
 
 before_install:
   - ./tests/setup.sh
@@ -18,7 +22,7 @@ install:
 
 # Install phan separately because the tolerant-php-parser version may be behind.
 script:
-  - composer create-project phan/phan=0.12.4 ~/phan-install; ~/phan-install/phan
+  - composer create-project phan/phan=1.1.0 ~/phan-install; ~/phan-install/phan
   - ./test
 
 branches:

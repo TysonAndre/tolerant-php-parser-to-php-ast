@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1);
 namespace TolerantASTConverter\Tests;
 
-use TolerantASTConverter\TolerantASTConverter;
 use TolerantASTConverter\NodeDumper;
+use TolerantASTConverter\TolerantASTConverter;
 
 require_once __DIR__ . '/../../src/util.php';
 

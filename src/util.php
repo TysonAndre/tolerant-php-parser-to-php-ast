@@ -18,7 +18,8 @@ function get_flag_info() : array
         flags\MODIFIER_STATIC => 'MODIFIER_STATIC',
         flags\MODIFIER_ABSTRACT => 'MODIFIER_ABSTRACT',
         flags\MODIFIER_FINAL => 'MODIFIER_FINAL',
-        flags\RETURNS_REF => 'RETURNS_REF',
+        flags\FUNC_RETURNS_REF => 'FUNC_RETURNS_REF',
+        flags\FUNC_GENERATOR => 'FUNC_GENERATOR',
     ];
     $types = [
         flags\TYPE_NULL => 'TYPE_NULL',
@@ -32,12 +33,12 @@ function get_flag_info() : array
         flags\TYPE_VOID => 'TYPE_VOID',
         flags\TYPE_ITERABLE => 'TYPE_ITERABLE',
     ];
-    $useTypes = [
+    $use_types = [
         flags\USE_NORMAL => 'USE_NORMAL',
         flags\USE_FUNCTION => 'USE_FUNCTION',
         flags\USE_CONST => 'USE_CONST',
     ];
-    $sharedBinaryOps = [
+    $shared_binary_ops = [
         flags\BINARY_BITWISE_OR => 'BINARY_BITWISE_OR',
         flags\BINARY_BITWISE_AND => 'BINARY_BITWISE_AND',
         flags\BINARY_BITWISE_XOR => 'BINARY_BITWISE_XOR',
@@ -78,7 +79,7 @@ function get_flag_info() : array
             flags\UNARY_PLUS => 'UNARY_PLUS',
             flags\UNARY_SILENCE => 'UNARY_SILENCE',
         ],
-        ast\AST_BINARY_OP => $sharedBinaryOps + [
+        ast\AST_BINARY_OP => $shared_binary_ops + [
             flags\BINARY_BOOL_AND => 'BINARY_BOOL_AND',
             flags\BINARY_BOOL_OR => 'BINARY_BOOL_OR',
             flags\BINARY_BOOL_XOR => 'BINARY_BOOL_XOR',
@@ -93,21 +94,7 @@ function get_flag_info() : array
             flags\BINARY_SPACESHIP => 'BINARY_SPACESHIP',
             flags\BINARY_COALESCE => 'BINARY_COALESCE',
         ],
-        ast\AST_ASSIGN_OP => $sharedBinaryOps + [
-            // Old version 10 flags
-            flags\ASSIGN_BITWISE_OR => 'ASSIGN_BITWISE_OR',
-            flags\ASSIGN_BITWISE_AND => 'ASSIGN_BITWISE_AND',
-            flags\ASSIGN_BITWISE_XOR => 'ASSIGN_BITWISE_XOR',
-            flags\ASSIGN_CONCAT => 'ASSIGN_CONCAT',
-            flags\ASSIGN_ADD => 'ASSIGN_ADD',
-            flags\ASSIGN_SUB => 'ASSIGN_SUB',
-            flags\ASSIGN_MUL => 'ASSIGN_MUL',
-            flags\ASSIGN_DIV => 'ASSIGN_DIV',
-            flags\ASSIGN_MOD => 'ASSIGN_MOD',
-            flags\ASSIGN_POW => 'ASSIGN_POW',
-            flags\ASSIGN_SHIFT_LEFT => 'ASSIGN_SHIFT_LEFT',
-            flags\ASSIGN_SHIFT_RIGHT => 'ASSIGN_SHIFT_RIGHT',
-        ],
+        ast\AST_ASSIGN_OP => $shared_binary_ops,
         ast\AST_MAGIC_CONST => [
             flags\MAGIC_LINE => 'MAGIC_LINE',
             flags\MAGIC_FILE => 'MAGIC_FILE',
@@ -118,9 +105,9 @@ function get_flag_info() : array
             flags\MAGIC_CLASS => 'MAGIC_CLASS',
             flags\MAGIC_TRAIT => 'MAGIC_TRAIT',
         ],
-        ast\AST_USE => $useTypes,
-        ast\AST_GROUP_USE => $useTypes,
-        ast\AST_USE_ELEM => $useTypes,
+        ast\AST_USE => $use_types,
+        ast\AST_GROUP_USE => $use_types,
+        ast\AST_USE_ELEM => $use_types,
         ast\AST_INCLUDE_OR_EVAL => [
             flags\EXEC_EVAL => 'EXEC_EVAL',
             flags\EXEC_INCLUDE => 'EXEC_INCLUDE',
@@ -132,6 +119,9 @@ function get_flag_info() : array
             flags\ARRAY_SYNTAX_LIST => 'ARRAY_SYNTAX_LIST',
             flags\ARRAY_SYNTAX_LONG => 'ARRAY_SYNTAX_LONG',
             flags\ARRAY_SYNTAX_SHORT => 'ARRAY_SYNTAX_SHORT',
+        ],
+        ast\AST_CLOSURE_VAR => [
+            flags\CLOSURE_USE_REF => 'CLOSURE_USE_REF',
         ],
     ];
 
@@ -212,7 +202,7 @@ function ast_dump($ast, int $options = 0) : string
             \var_dump($ast);
         } finally {
             $repr = ob_get_clean();
-        };
+        }
         return "INVALID_TYPE: " . $repr;
     }
 }
