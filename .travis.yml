@@ -22,7 +22,7 @@ install:
 
 # Install phan separately because the tolerant-php-parser version may be behind.
 script:
-  - composer create-project phan/phan=1.1.0 ~/phan-install; ~/phan-install/phan
+  - composer create-project phan/phan=1.2.1 ~/phan-install; ~/phan-install/phan
   - ./test
 
 branches:
