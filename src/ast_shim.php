@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Based on PHPDoc stub file for ast extension from
  * https://github.com/nikic/php-ast/blob/master/ast_stub.php
@@ -7,10 +8,17 @@
  * @author Nikita Popov <nikic@php.net>
  *
  * With modifications to be a functional replacement for the data
- * structures and global constants of ext-ast. (for class ast\Node and ast\Node\Decl)
+ * structures and global constants of ext-ast. (for class ast\Node)
+ *
+ * This supports AST version 50
  *
  * However, this file does not define any global functions such as
  * ast\parse_code() and ast\parse_file(). (to avoid confusion)
+ *
+ * TODO: Make it so that constant values will be identical to php-ast
+ * for PHP 7.0-7.3
+ *
+ * @phan-file-suppress PhanUnreferencedConstant - Plugins may reference some of these constants
  *
  * @author Tyson Andre
  */
@@ -47,12 +55,9 @@ const AST_TYPE = 1;
 const AST_VAR = 256;
 const AST_CONST = 257;
 const AST_UNPACK = 258;
-const AST_UNARY_PLUS = 259;
-const AST_UNARY_MINUS = 260;
 const AST_CAST = 261;
 const AST_EMPTY = 262;
 const AST_ISSET = 263;
-const AST_SILENCE = 264;
 const AST_SHELL_EXEC = 265;
 const AST_CLONE = 266;
 const AST_EXIT = 267;
@@ -84,15 +89,10 @@ const AST_ASSIGN = 517;
 const AST_ASSIGN_REF = 518;
 const AST_ASSIGN_OP = 519;
 const AST_BINARY_OP = 520;
-const AST_GREATER = 521;
-const AST_GREATER_EQUAL = 522;
-const AST_AND = 523;
-const AST_OR = 524;
 const AST_ARRAY_ELEM = 525;
 const AST_NEW = 526;
 const AST_INSTANCEOF = 527;
 const AST_YIELD = 528;
-const AST_COALESCE = 529;
 const AST_STATIC = 530;
 const AST_WHILE = 531;
 const AST_DO_WHILE = 532;
@@ -132,6 +132,10 @@ const MODIFIER_STATIC = 1;
 const MODIFIER_ABSTRACT = 2;
 const MODIFIER_FINAL = 4;
 const RETURNS_REF = 67108864;
+const FUNC_RETURNS_REF = 67108864;
+const FUNC_GENERATOR = 4194304;  // NOTE: Not set in all PHP versions.
+const ARRAY_ELEM_REF = 1;
+const CLOSURE_USE_REF = 1;
 const CLASS_ABSTRACT = 32;
 const CLASS_FINAL = 4;
 const CLASS_TRAIT = 128;
@@ -179,18 +183,6 @@ const BINARY_IS_GREATER = 256;
 const BINARY_IS_GREATER_OR_EQUAL = 257;
 const BINARY_SPACESHIP = 170;
 const BINARY_COALESCE = 260;
-const ASSIGN_BITWISE_OR = 31;
-const ASSIGN_BITWISE_AND = 32;
-const ASSIGN_BITWISE_XOR = 33;
-const ASSIGN_CONCAT = 30;
-const ASSIGN_ADD = 23;
-const ASSIGN_SUB = 24;
-const ASSIGN_MUL = 25;
-const ASSIGN_DIV = 26;
-const ASSIGN_MOD = 27;
-const ASSIGN_POW = 167;
-const ASSIGN_SHIFT_LEFT = 28;
-const ASSIGN_SHIFT_RIGHT = 29;
 const EXEC_EVAL = 1;
 const EXEC_INCLUDE = 2;
 const EXEC_INCLUDE_ONCE = 4;
@@ -214,21 +206,24 @@ const ARRAY_SYNTAX_SHORT = 3;
 
 namespace ast;
 
+// The parse_file(), parse_code(), get_kind_name(), and kind_uses_flags() are deliberately omitted from this stub.
+// Use Phan\Debug and Phan\AST\Parser instead.
+
 if (!class_exists('\ast\Node')) {
-/**
- * This class describes a single node in a PHP AST.
- * @suppress PhanRedefineClassInternal
- */
+    /**
+     * This class describes a single node in a PHP AST.
+     * @suppress PhanRedefineClassInternal
+     */
     class Node
     {
         /** @var int AST Node Kind. Values are one of ast\AST_* constants. */
         public $kind;
 
         /**
-     * @var int AST Flags.
-     * Certain node kinds have flags that can be set.
-     * These will be a bitfield of ast\flags\* constants.
-     */
+         * @var int AST Flags.
+         * Certain node kinds have flags that can be set.
+         * These will be a bitfield of ast\flags\* constants.
+         */
         public $flags;
 
         /** @var int Line the node starts in */
@@ -237,10 +232,10 @@ if (!class_exists('\ast\Node')) {
         /** @var array Child nodes (may be empty) */
         public $children;
         /**
-     * A constructor which validates data types but not the values themselves.
-     * For backwards compatibility reasons, all values are optional and properties default to null
-     * @suppress PhanTypeMismatchProperty
-     */
+         * A constructor which validates data types but not the values themselves.
+         * For backwards compatibility reasons, all values are optional and properties default to null
+         * @suppress PhanTypeMismatchProperty
+         */
         public function __construct(int $kind = null, int $flags = null, array $children = null, int $lineno = null)
         {
             $this->kind = $kind;
@@ -251,23 +246,38 @@ if (!class_exists('\ast\Node')) {
     }
 }
 
-namespace ast\Node;
-
-if (!class_exists('\ast\Node\Decl')) {
-/**
- * AST Node type for function and class declarations.
- * @suppress PhanRedefineClassInternal
- * @suppress PhanRedefinedExtendedClass
- */
-    class Decl extends \ast\Node
+if (!class_exists('ast\Metadata')) {
+    /**
+     * Metadata entry for a single AST kind, as returned by ast\get_metadata().
+     * @suppress PhanRedefineClassInternal
+     * @suppress PhanUnreferencedClass
+     */
+    class Metadata
     {
-        /** @var int End line number of the declaration */
-        public $endLineno;
+        /**
+         * @var int AST node kind (one of the ast\AST_* constants).
+         * @suppress PhanUnreferencedPublicProperty
+         */
+        public $kind;
 
-        /** @var string Name of the function or class (not including the namespace prefix) */
+        /**
+         * @var string Name of the node kind (e.g. "AST_NAME").
+         * @suppress PhanUnreferencedPublicProperty
+         */
         public $name;
 
-        /** @var string|null Doc comment preceeding the declaration. null if no doc comment was used. */
-        public $docComment;
+        /**
+         * @var array<int,string> Array of supported flags. The flags are given as names of constants, such as
+         *                        "ast\flags\TYPE_STRING".
+         * @suppress PhanUnreferencedPublicProperty
+         */
+        public $flags;
+
+        /**
+         * @var bool Whether the flags are exclusive or combinable. Exclusive flags should be checked
+         *           using ===, while combinable flags should be checked using &.
+         * @suppress PhanUnreferencedPublicProperty
+         */
+        public $flagsCombinable;
     }
 }
