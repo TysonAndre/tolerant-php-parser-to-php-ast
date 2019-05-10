@@ -10,7 +10,7 @@ declare(strict_types=1);
  * With modifications to be a functional replacement for the data
  * structures and global constants of ext-ast. (for class ast\Node)
  *
- * This supports AST version 50
+ * This supports AST version 70
  *
  * However, this file does not define any global functions such as
  * ast\parse_code() and ast\parse_file(). (to avoid confusion)
@@ -18,7 +18,8 @@ declare(strict_types=1);
  * TODO: Make it so that constant values will be identical to php-ast
  * for PHP 7.0-7.3
  *
- * @phan-file-suppress PhanUnreferencedConstant - Plugins may reference some of these constants
+ * @phan-file-suppress PhanUnreferencedConstant, UnusedPluginFileSuppression - Plugins may reference some of these constants
+ * @phan-file-suppress PhanPluginUnknownArrayPropertyType, PhanPluginUnknownArrayMethodParamType this is a stub
  *
  * @author Tyson Andre
  */
@@ -27,7 +28,6 @@ declare(strict_types=1);
 namespace ast;
 
 const AST_ARG_LIST = 128;
-const AST_LIST = 255;
 const AST_ARRAY = 129;
 const AST_ENCAPS_LIST = 130;
 const AST_EXPR_LIST = 131;
@@ -50,6 +50,7 @@ const AST_FUNC_DECL = 66;
 const AST_CLOSURE = 67;
 const AST_METHOD = 68;
 const AST_CLASS = 69;
+const AST_ARROW_FUNC = 71;
 const AST_MAGIC_CONST = 0;
 const AST_TYPE = 1;
 const AST_VAR = 256;
@@ -80,6 +81,7 @@ const AST_THROW = 283;
 const AST_GOTO = 284;
 const AST_BREAK = 285;
 const AST_CONTINUE = 286;
+const AST_CLASS_NAME = 287;
 const AST_DIM = 512;
 const AST_PROP = 513;
 const AST_STATIC_PROP = 514;
@@ -109,6 +111,7 @@ const AST_NAMESPACE = 540;
 const AST_USE_ELEM = 541;
 const AST_TRAIT_ALIAS = 542;
 const AST_GROUP_USE = 543;
+const AST_PROP_GROUP = 545;
 const AST_METHOD_CALL = 768;
 const AST_STATIC_CALL = 769;
 const AST_CONDITIONAL = 770;
@@ -202,6 +205,8 @@ const MAGIC_TRAIT = 374;
 const ARRAY_SYNTAX_LIST = 1;
 const ARRAY_SYNTAX_LONG = 2;
 const ARRAY_SYNTAX_SHORT = 3;
+const DIM_ALTERNATIVE_SYNTAX = 2;
+const PARENTHESIZED_CONDITIONAL = 1;
 // END AST FLAG CONSTANTS
 
 namespace ast;
@@ -209,7 +214,7 @@ namespace ast;
 // The parse_file(), parse_code(), get_kind_name(), and kind_uses_flags() are deliberately omitted from this stub.
 // Use Phan\Debug and Phan\AST\Parser instead.
 
-if (!class_exists('\ast\Node')) {
+if (!\class_exists('\ast\Node')) {
     /**
      * This class describes a single node in a PHP AST.
      * @suppress PhanRedefineClassInternal
@@ -234,7 +239,7 @@ if (!class_exists('\ast\Node')) {
         /**
          * A constructor which validates data types but not the values themselves.
          * For backwards compatibility reasons, all values are optional and properties default to null
-         * @suppress PhanTypeMismatchProperty
+         * @suppress PhanPossiblyNullTypeMismatchProperty
          */
         public function __construct(int $kind = null, int $flags = null, array $children = null, int $lineno = null)
         {
@@ -246,7 +251,7 @@ if (!class_exists('\ast\Node')) {
     }
 }
 
-if (!class_exists('ast\Metadata')) {
+if (!\class_exists('ast\Metadata')) {
     /**
      * Metadata entry for a single AST kind, as returned by ast\get_metadata().
      * @suppress PhanRedefineClassInternal
@@ -267,7 +272,7 @@ if (!class_exists('ast\Metadata')) {
         public $name;
 
         /**
-         * @var array<int,string> Array of supported flags. The flags are given as names of constants, such as
+         * @var list<string> Array of supported flags. The flags are given as names of constants, such as
          *                        "ast\flags\TYPE_STRING".
          * @suppress PhanUnreferencedPublicProperty
          */
@@ -278,6 +283,7 @@ if (!class_exists('ast\Metadata')) {
          *           using ===, while combinable flags should be checked using &.
          * @suppress PhanUnreferencedPublicProperty
          */
+        // phpcs:ignore Phan.NamingConventions.ValidUnderscoreVariableName.MemberVarNotUnderscore
         public $flagsCombinable;
     }
 }
