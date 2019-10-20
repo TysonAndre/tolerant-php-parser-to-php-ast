@@ -2,8 +2,14 @@
 
 namespace TolerantASTConverter;
 
+use Exception;
 use Microsoft\PhpParser\Node;
 use Microsoft\PhpParser\Token;
+
+use function get_class;
+use function gettype;
+use function is_object;
+use function substr;
 
 /**
  * Source: https://github.com/TysonAndre/tolerant-php-parser-to-php-ast
@@ -29,16 +35,17 @@ use Microsoft\PhpParser\Token;
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
+ * @phan-file-suppress PhanPluginDescriptionlessCommentOnPublicMethod
  */
 class NodeDumper
 {
-    /** @var string */
+    /** @var string the contents of the file containing the tolerant-php-parser node to be dumped. */
     private $file_contents;
-    /** @var bool */
+    /** @var bool whether we should print byte offsets along with the node */
     private $include_offset;
-    /** @var bool */
+    /** @var bool whether we should print the node kind of tokens*/
     private $include_token_kind;
-    /** @var string */
+    /** @var string the indentation string to print before each level of nodes (whitespace) */
     private $indent;
 
     // TODO: Pass an options array instead, or add setters?
@@ -50,46 +57,63 @@ class NodeDumper
         $this->indent = $indent;
     }
 
-    /** @return void */
-    public function setIncludeOffset(bool $include_offset)
+    /**
+     * Should this include the byte offset in the file where the node occurred?
+     */
+    public function setIncludeOffset(bool $include_offset) : void
     {
         $this->include_offset = $include_offset;
     }
 
-    /** @return void */
-    public function setIncludeTokenKind(bool $include_token_kind)
+    /**
+     * Should this include the token kind (default is just the text of the token)
+     */
+    public function setIncludeTokenKind(bool $include_token_kind) : void
     {
         $this->include_token_kind = $include_token_kind;
     }
 
-    /** @return void */
-    public function setIndent(string $indent)
+    /**
+     * Sets the text used for indentation (e.g. 4 spaces)
+     * @suppress PhanUnreferencedPublicMethod
+     */
+    public function setIndent(string $indent) : void
     {
         $this->indent = $indent;
     }
 
-    public function dumpClassName(Node $ast_node) : string
+    /**
+     * Converts the class name of $ast_node to a short string describing that class name.
+     * Removes the common `Microsoft\\PhpParser\\` prefix
+     */
+    public static function dumpClassName(Node $ast_node) : string
     {
         $name = get_class($ast_node);
-        if (stripos($name, 'Microsoft\\PhpParser\\') === 0) {
-            $name = substr($name, 20);
-        }
-        return $name;
-    }
-
-    public function dumpTokenClassName(Token $ast_node) : string
-    {
-        $name = get_class($ast_node);
-        if (stripos($name, 'Microsoft\\PhpParser\\') === 0) {
-            $name = substr($name, 20);
+        if (\stripos($name, 'Microsoft\\PhpParser\\') === 0) {
+            // Remove the PhpParser namespace
+            $name = (string)substr($name, 20);
         }
         return $name;
     }
 
     /**
-     * @param Node|Token $ast_node
+     * Converts the class name of $token to a short string describing that class name.
+     * Removes the common `Microsoft\\PhpParser\\` prefix
+     */
+    public static function dumpTokenClassName(Token $token) : string
+    {
+        $name = get_class($token);
+        if (\stripos($name, 'Microsoft\\PhpParser\\') === 0) {
+            // Remove the PhpParser namespace
+            $name = (string)substr($name, 20);
+        }
+        return $name;
+    }
+
+    /**
+     * @param Node|Token|null $ast_node
      * @param string $padding (to be echoed before the current node
-     * @return string
+     * @throws Exception for invalid $ast_node values
      */
     public function dumpTreeAsString($ast_node, string $key = '', string $padding = '') : string
     {
@@ -98,25 +122,25 @@ class NodeDumper
                 "%s%s%s%s\n",
                 $padding,
                 $key !== '' ? $key . ': ' : '',
-                $this->dumpClassName($ast_node),
+                self::dumpClassName($ast_node),
                 $this->include_offset ? ' (@' . $ast_node->getStart() . ')' : ''
             );
 
-            $result = [$first_part];
+            $result = $first_part;
             foreach ($ast_node->getChildNodesAndTokens() as $name => $child) {
-                $result[] = $this->dumpTreeAsString($child, $name, $padding . $this->indent);
+                $result .= $this->dumpTreeAsString($child, (string) $name, $padding . $this->indent);
             }
-            return \implode('', $result);
+            return $result;
         } elseif ($ast_node instanceof Token) {
             return \sprintf(
                 "%s%s%s: %s%s%s: %s\n",
                 $padding,
                 $key !== '' ? $key . ': ' : '',
-                $this->dumpTokenClassName($ast_node),
+                self::dumpTokenClassName($ast_node),
                 $ast_node->getTokenKindNameFromValue($ast_node->kind),
                 $this->include_token_kind ? '(' . $ast_node->kind . ')' : '',
                 $this->include_offset ? ' (@' . $ast_node->start . ')' : '',
-                \json_encode(\substr($this->file_contents, $ast_node->fullStart, $ast_node->length))
+                StringUtil::jsonEncode(\substr($this->file_contents, $ast_node->fullStart, $ast_node->length))
             );
         } elseif (\is_scalar($ast_node) || $ast_node === null) {
             return \var_export($ast_node, true);
@@ -129,9 +153,10 @@ class NodeDumper
     /**
      * @param Node|Token $ast_node
      * @param string $padding (to be echoed before the current node
-     * @return void
+     * @throws Exception for invalid $ast_node values
+     * @suppress PhanUnreferencedPublicMethod
      */
-    public function dumpTree($ast_node, string $key = '', string $padding = '')
+    public function dumpTree($ast_node, string $key = '', string $padding = '') : void
     {
         echo $this->dumpTreeAsString($ast_node, $key, $padding);
     }

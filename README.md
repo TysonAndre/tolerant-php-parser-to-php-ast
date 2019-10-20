@@ -3,17 +3,9 @@ Tolerant-PHP-Parser to php-ast
 
 [![Build Status](https://travis-ci.org/TysonAndre/tolerant-php-parser-to-php-ast.svg?branch=master)](https://travis-ci.org/TysonAndre/tolerant-php-parser-to-php-ast)
 
-This project uses Microsoft/tolerant-php-parser to generate a tree with error tolerance, then converts from that tree to ast\Node: https://github.com/Microsoft/tolerant-php-parser/issues/113
+This project uses Microsoft/tolerant-php-parser to generate a tree with error tolerance, then converts from that tree to ast\Node from [php-ast](https://github.com/nikic/php-ast)
 
-This is 90% done. Current test cases pass, but some cases aren't yet tested.
-
-- Still being ported from https://github.com/TysonAndre/php-parser-to-php-ast
-- The test suite is not yet comprehensive, may need to handle tokens
-
-[Current Issues](https://github.com/TysonAndre/tolerant-php-parser-to-php-ast/issues/)
-
-- The test suite this is based off of covers common cases for Phan, but edge cases still remain.
-  See https://github.com/TysonAndre/tolerant-php-parser-to-php-ast/issues/4
+This release (0.1.0) supports AST version 70.
 
 Usage
 -----
@@ -28,11 +20,12 @@ Using it as an error-tolerant substitute for php-ast (e.g. for use in IDEs)
 - Omitting errors only handles some common cases that come up while editing a file.
 - Placeholders may change in the future.
 - [tests/ASTConverter/ErrorTolerantConversionTest.php](https://github.com/TysonAndre/tolerant-php-parser-to-php-ast/blob/master/tests/ASTConverter/ErrorTolerantConversionTest.php)
+- [Phan's](https://github.com/phan/phan) Language Server uses this code to do that.
 
 Running unit tests
 ------------------
 
-To run unit tests, you must install [nikic/php-ast](https://github.com/nikic/php-ast) 0.1.5+ (for the expected results to be created).
+To run unit tests, you must install [nikic/php-ast](https://github.com/nikic/php-ast) 1.0.1+ (for the expected results to be created).
 You must also run `composer install` if you haven't already done so.
 
 - Then run `vendor/bin/phpunit`

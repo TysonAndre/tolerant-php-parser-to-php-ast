@@ -21,6 +21,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
+ * @phan-file-suppress PhanMissingRequireFile one or the other exists
  */
 
 if (file_exists(__DIR__ . "/../../../vendor/autoload.php")) {
@@ -33,8 +34,11 @@ use TolerantASTConverter\NodeDumper;
 
 dump_main();
 
-// Dumps a snippet provided on stdin.
-function dump_main() {
+/**
+ * Dumps a snippet provided on stdin.
+ * @throws Exception
+ */
+function dump_main() : void {
     error_reporting(E_ALL);
     global $argv;
 
@@ -58,12 +62,17 @@ EOB;
     dump_expr($expr);
 }
 
-function dump_expr_as_ast(string $expr) {
+/** Dumps the ast of the expression to stdout. */
+function dump_expr_as_ast(string $expr) : void {
     require_once __DIR__ . '/src/util.php';
     $ast_data = (new \TolerantASTConverter\TolerantASTConverter())->parseCodeAsPHPAST($expr, 50);
     echo ast_dump($ast_data, AST_DUMP_LINENOS);
 }
-function dump_expr(string $expr) {
+/**
+ * Dumps the tolerant-php-parser AST to stdout
+ * @throws Exception
+ */
+function dump_expr(string $expr) : void {
     // Instantiate new parser instance
     $parser = new Parser();
     // Return and print an AST from string contents
