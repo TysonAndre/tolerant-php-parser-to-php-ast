@@ -7,7 +7,7 @@ Tolerant-PHP-Parser to php-ast
 
 This project uses Microsoft/tolerant-php-parser to generate a tree with error tolerance, then converts from that tree to ast\Node from [php-ast](https://github.com/nikic/php-ast)
 
-This release (0.1.0) supports AST version 70.
+This release supports AST version 70.
 
 Usage
 -----
@@ -30,6 +30,7 @@ Running unit tests
 To run unit tests, you must install [nikic/php-ast](https://github.com/nikic/php-ast) 1.0.1+ (for the expected results to be created).
 You must also run `composer install` if you haven't already done so.
 
+- For php 7.4, php-ast 1.0.3+ must be installed.
 - Then run `vendor/bin/phpunit`
 
 Possible Future Enhancements
