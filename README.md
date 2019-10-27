@@ -2,6 +2,8 @@ Tolerant-PHP-Parser to php-ast
 ==============================
 
 [![Build Status](https://travis-ci.org/TysonAndre/tolerant-php-parser-to-php-ast.svg?branch=master)](https://travis-ci.org/TysonAndre/tolerant-php-parser-to-php-ast)
+[![Latest Stable Version](https://img.shields.io/packagist/v/tysonandre/tolerant-php-parser-to-php-ast.svg)](https://packagist.org/packages/tysonandre/tolerant-php-parser-to-php-ast)
+[![License](https://img.shields.io/packagist/l/tysonandre/tolerant-php-parser-to-php-ast.svg)](https://github.com/tysonandre/tolerant-php-parser-to-php-astn/blob/master/LICENSE)
 
 This project uses Microsoft/tolerant-php-parser to generate a tree with error tolerance, then converts from that tree to ast\Node from [php-ast](https://github.com/nikic/php-ast)
 
