@@ -17,11 +17,11 @@
         }
     },
     "require": {
-        "php": ">=7.0",
+        "php": ">=7.1",
         "microsoft/tolerant-php-parser": "0.0.18"
     },
     "require-dev": {
-        "phpunit/phpunit": "^6.4",
+        "phpunit/phpunit": "^7.5",
         "phan/phan": "^2.3.0"
     },
     "suggest": {
