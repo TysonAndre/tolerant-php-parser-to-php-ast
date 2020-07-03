@@ -18,6 +18,7 @@ use function is_int;
 use function is_string;
 
 require_once __DIR__ . '/../../src/util.php';
+require_once __DIR__ . '/../../src/shim_loader.php';
 
 /**
  * Tests that the polyfill works with valid ASTs
@@ -26,8 +27,9 @@ class ConversionTest extends \PHPUnit\Framework\TestCase
 {
     /**
      * @return list<string>
+     * @suppress PhanPluginUnknownObjectMethodCall
      */
-    protected function scanSourceDirForPHP(string $source_dir) : array
+    protected function scanSourceDirForPHP(string $source_dir): array
     {
         $files = [];
         foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($source_dir)) as $file_path => $file_info) {
@@ -36,7 +38,7 @@ class ConversionTest extends \PHPUnit\Framework\TestCase
                 !in_array($filename, ['.', '..'], true) &&
                 \substr($filename, 0, 1) !== '.' &&
                 \strpos($filename, '.') !== false &&
-                \pathinfo($filename)['extension'] === 'php') {
+                (\pathinfo($filename)['extension'] ?? '') === 'php') {
                 $files[] = $file_path;
             }
         }
@@ -49,7 +51,7 @@ class ConversionTest extends \PHPUnit\Framework\TestCase
     /**
      * @return bool does php-ast support $ast_version
      */
-    public static function hasNativeASTSupport(int $ast_version) : bool
+    public static function hasNativeASTSupport(int $ast_version): bool
     {
         try {
             ast\parse_code('', $ast_version);
@@ -64,7 +66,7 @@ class ConversionTest extends \PHPUnit\Framework\TestCase
      * (i.e. simplest ASTs) appear first.
      * @param string[] $files
      */
-    private static function sortByTokenCount(array &$files) : void
+    private static function sortByTokenCount(array &$files): void
     {
         $token_counts = [];
         foreach ($files as $file) {
@@ -74,7 +76,7 @@ class ConversionTest extends \PHPUnit\Framework\TestCase
             }
             $token_counts[$file] = count(\token_get_all($contents));
         }
-        \usort($files, static function (string $path1, string $path2) use ($token_counts) : int {
+        \usort($files, static function (string $path1, string $path2) use ($token_counts): int {
             return $token_counts[$path1] <=> $token_counts[$path2];
         });
     }
@@ -84,11 +86,11 @@ class ConversionTest extends \PHPUnit\Framework\TestCase
      *
      * @return array{0:string,1:int}[] array of [string $file_path, int $ast_version]
      */
-    public function astValidFileExampleProvider() : array
+    public function astValidFileExampleProvider(): array
     {
         $tests = [];
         // @phan-suppress-next-line PhanPossiblyFalseTypeArgumentInternal
-        $source_dir = \dirname(\realpath(__DIR__), 2) . '/test_files/src';
+        $source_dir = \dirname(\realpath(__DIR__), 3) . '/misc/fallback_ast_src';
         $paths = $this->scanSourceDirForPHP($source_dir);
 
         self::sortByTokenCount($paths);
@@ -105,7 +107,7 @@ class ConversionTest extends \PHPUnit\Framework\TestCase
     /**
      * @param ast\Node|int|string|float|null $node
      */
-    private static function normalizeOriginalAST($node) : void
+    private static function normalizeOriginalAST($node): void
     {
         if ($node instanceof ast\Node) {
             $kind = $node->kind;
@@ -130,7 +132,7 @@ class ConversionTest extends \PHPUnit\Framework\TestCase
      * Set all of the line numbers to constants,
      * so that minor differences in line numbers won't cause tests to fail.
      */
-    public static function normalizeLineNumbers(ast\Node $node) : ast\Node
+    public static function normalizeLineNumbers(ast\Node $node): ast\Node
     {
         $node = clone($node);
         if (is_array($node->children)) {
@@ -157,7 +159,7 @@ class ConversionTest extends \PHPUnit\Framework\TestCase
      * Phan does not use these flags because they are not natively provided in all PHP versions.
      * TODO: Shouldn't they be available in PHP 7.1+
      */
-    public static function normalizeYieldFlags(ast\Node $node) : void
+    public static function normalizeYieldFlags(ast\Node $node): void
     {
         if (\in_array($node->kind, self::FUNCTION_DECLARATION_KINDS, true)) {
             // Alternately, could make Phan do this.
@@ -174,7 +176,7 @@ class ConversionTest extends \PHPUnit\Framework\TestCase
     }
 
     /** @dataProvider astValidFileExampleProvider */
-    public function testFallbackFromParser(string $file_name, int $ast_version) : void
+    public function testFallbackFromParser(string $file_name, int $ast_version): void
     {
         $test_folder_name = \basename(\dirname($file_name));
         if (\PHP_VERSION_ID < 70300 && $test_folder_name === 'php73_or_newer') {
@@ -182,6 +184,9 @@ class ConversionTest extends \PHPUnit\Framework\TestCase
         }
         if (\PHP_VERSION_ID < 70400 && $test_folder_name === 'php74_or_newer') {
             $this->markTestIncomplete('php-ast cannot parse php7.4 syntax when running in php7.3 or older');
+        }
+        if (\PHP_VERSION_ID < 80000 && $test_folder_name === 'php80_or_newer') {
+            $this->markTestIncomplete('php-ast cannot parse php8.0 syntax when running in php7.4 or older');
         }
         $contents = \file_get_contents($file_name);
         if ($contents === false) {
