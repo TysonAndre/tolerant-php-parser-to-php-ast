@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 use ast\flags;
 use ast\Node;
@@ -13,7 +15,7 @@ const AST_DUMP_LINENOS = 1;
  * @return array{0:associative-array<int,array<int,string>>,1:associative-array<int,array<int,string>>}
  * Returns [string[][] $exclusive, string[][] $combinable].
  */
-function get_flag_info() : array
+function get_flag_info(): array
 {
     // TODO: Use AST's built in flag info if available.
     static $exclusive, $combinable;
@@ -39,6 +41,7 @@ function get_flag_info() : array
         ];
         $types = [
             flags\TYPE_NULL => 'TYPE_NULL',
+                flags\TYPE_FALSE => 'TYPE_FALSE',
             flags\TYPE_BOOL => 'TYPE_BOOL',
             flags\TYPE_LONG => 'TYPE_LONG',
             flags\TYPE_DOUBLE => 'TYPE_DOUBLE',
@@ -48,6 +51,7 @@ function get_flag_info() : array
             flags\TYPE_CALLABLE => 'TYPE_CALLABLE',
             flags\TYPE_VOID => 'TYPE_VOID',
             flags\TYPE_ITERABLE => 'TYPE_ITERABLE',
+                flags\TYPE_STATIC => 'TYPE_STATIC',
         ];
         $use_types = [
             flags\USE_NORMAL => 'USE_NORMAL',
@@ -172,7 +176,7 @@ function get_flag_info() : array
  * Computes a string representation of AST node flags such as
  * 'ASSIGN_DIV|TYPE_ARRAY'
  */
-function format_flags(int $kind, int $flags) : string
+function format_flags(int $kind, int $flags): string
 {
     [$exclusive, $combinable] = get_flag_info();
     $flag_names = [];
@@ -199,7 +203,7 @@ function format_flags(int $kind, int $flags) : string
  * @param Node|string|int|float|null $ast
  * @param int $options (AST_DUMP_*)
  */
-function ast_dump($ast, int $options = 0) : string
+function ast_dump($ast, int $options = 0): string
 {
     if ($ast instanceof Node) {
         // $kind can be invalid for placeholder nodes or unexpected tolerant-php-parser classes

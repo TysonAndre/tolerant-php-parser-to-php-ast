@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace TolerantASTConverter;
 
@@ -22,5 +24,5 @@ interface Cache
      * @param T $value
      * @return bool true if successfully saved
      */
-    public function save(string $key, $value) : bool;
+    public function save(string $key, $value): bool;
 }

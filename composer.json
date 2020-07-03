@@ -13,19 +13,19 @@
     "config": {
         "sort-packages": true,
         "platform": {
-            "php": "7.1.28"
+            "php": "7.2.22"
         }
     },
     "require": {
-        "php": ">=7.0",
-        "microsoft/tolerant-php-parser": "0.0.18"
+        "php": ">=7.2",
+        "microsoft/tolerant-php-parser": "0.0.20"
     },
     "require-dev": {
-        "phpunit/phpunit": "^6.4",
-        "phan/phan": "^2.3.0"
+        "phpunit/phpunit": "^7.5",
+        "phan/phan": "^3.0.4"
     },
     "suggest": {
-        "ext-ast": "~1.0.1"
+        "ext-ast": "^1.0.6"
     },
     "autoload": {
         "psr-4": {"TolerantASTConverter\\": "src/TolerantASTConverter"}
