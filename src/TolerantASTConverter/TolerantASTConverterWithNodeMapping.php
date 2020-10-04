@@ -21,7 +21,7 @@ use function preg_match;
  * This is a subclass of TolerantASTConverter
  * that maps the original AST to the corresponding generated ast\Node for a single selected location.
  *
- * This is used with "Go to definition" requests, completion requests, hover requests, etc
+ * This is used with "Go to definition" requests, completion requests, hover requests, etc.
  * in the copy of this class used by Phan.
  *
  * (This lets you know the byte offset of a given node and how long that node is)
@@ -99,10 +99,11 @@ class TolerantASTConverterWithNodeMapping extends TolerantASTConverter
 
     /**
      * @param Diagnostic[] &$errors @phan-output-reference
+     * @unused-param $cache
      * @throws InvalidArgumentException for invalid $version
      * @throws Throwable (after logging) if anything is thrown by the parser
      */
-    public function parseCodeAsPHPAST(string $file_contents, int $version, array &$errors = [], Cache $unused_cache = null): \ast\Node
+    public function parseCodeAsPHPAST(string $file_contents, int $version, array &$errors = [], Cache $cache = null): \ast\Node
     {
         // Force the byte offset to be within the
         $byte_offset = \max(0, \min(\strlen($file_contents), $this->instance_desired_byte_offset));
@@ -130,9 +131,11 @@ class TolerantASTConverterWithNodeMapping extends TolerantASTConverter
     }
 
     /**
+     * @unused-param $file_contents
+     * @unused-param $version
      * @return ?string - null if this should not be cached
      */
-    public function generateCacheKey(string $unused_file_contents, int $unused_version): ?string
+    public function generateCacheKey(string $file_contents, int $version): ?string
     {
         return null;
     }
