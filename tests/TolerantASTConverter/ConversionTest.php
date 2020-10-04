@@ -160,19 +160,20 @@ class ConversionTest extends \PHPUnit\Framework\TestCase
      *
      * Phan does not use these flags because they are not natively provided in all PHP versions.
      * TODO: Shouldn't they be available in PHP 7.1+
+     * @suppress PhanUndeclaredProperty
      */
-    public static function normalizeYieldFlags(ast\Node $node): void
+    public static function normalizeNodeFlags(ast\Node $node): void
     {
         if (\in_array($node->kind, self::FUNCTION_DECLARATION_KINDS, true)) {
             // Alternately, could make Phan do this.
             $node->flags &= ~ast\flags\FUNC_GENERATOR;
         }
-        // @phan-suppress-next-line PhanUndeclaredProperty
         unset($node->is_not_parenthesized);
+        unset($node->polyfill_has_trailing_comma);
 
         foreach ($node->children as $v) {
             if ($v instanceof ast\Node) {
-                self::normalizeYieldFlags($v);
+                self::normalizeNodeFlags($v);
             }
         }
     }
@@ -190,12 +191,20 @@ class ConversionTest extends \PHPUnit\Framework\TestCase
         if (\PHP_VERSION_ID < 80000 && $test_folder_name === 'php80_or_newer') {
             $this->markTestIncomplete('php-ast cannot parse php8.0 syntax when running in php7.4 or older');
         }
+        if (\PHP_VERSION_ID >= 80000 && \basename($file_name) === 'use_simple.php') {
+            $this->markTestIncomplete('php-ast cannot parse php8.0 syntax when running in php7.4 or older');
+        }
         $contents = \file_get_contents($file_name);
         if ($contents === false) {
             $this->fail("Failed to read $file_name");
             return;  // unreachable
         }
-        $ast = ast\parse_code($contents, $ast_version, $file_name);
+        try {
+            $ast = ast\parse_code($contents, $ast_version, $file_name);
+        } catch (\ParseError $e) {
+            $this->fail("Failed for $file_name:{$e->getLine()}: {$e->getMessage()}");
+            return;  // unreachable
+        }
         self::normalizeOriginalAST($ast);
         $this->assertInstanceOf('\ast\Node', $ast, 'Examples must be syntactically valid PHP parsable by php-ast');
         $converter = new TolerantASTConverter();
@@ -212,8 +221,8 @@ class ConversionTest extends \PHPUnit\Framework\TestCase
             $fallback_ast = self::normalizeLineNumbers($fallback_ast);
             $ast          = self::normalizeLineNumbers($ast);
         }
-        self::normalizeYieldFlags($ast);
-        self::normalizeYieldFlags($fallback_ast);
+        self::normalizeNodeFlags($ast);
+        self::normalizeNodeFlags($fallback_ast);
         // TODO: Remove $ast->parent recursively
         $fallback_ast_repr = \var_export($fallback_ast, true);
         $original_ast_repr = \var_export($ast, true);

@@ -283,6 +283,7 @@ return [
         'PhanPluginDescriptionlessCommentOnPrivateProperty',
         // TODO: Fix edge cases in --automatic-fix for PhanPluginRedundantClosureComment
         'PhanPluginRedundantClosureComment',
+        'PhanParamNameIndicatingUnusedInClosure',
     ],
 
     // If empty, no filter against issues types will be applied.

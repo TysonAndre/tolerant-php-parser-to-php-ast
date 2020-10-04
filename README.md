@@ -31,6 +31,7 @@ To run unit tests, you must install [nikic/php-ast](https://github.com/nikic/php
 You must also run `composer install` if you haven't already done so.
 
 - For php 7.4, php-ast 1.0.3+ must be installed.
+- For php 8.0, php-ast 1.0.10+ must be installed.
 - Then run `vendor/bin/phpunit`
 
 Possible Future Enhancements
